@@ -75,3 +75,62 @@ structure, methodology, and tooling.
 - sage4.dev / sage4.ai — available, but "4SAGE" reads better as a name (parallels 4GRP) than "SAGE4."
 **Rationale:** .dev is controlled by Google Registry, is well-regarded in the developer/tech community, enforces HTTPS by default (security benefit), and is affordable. Combined with the 4sage prefix, it's clean and memorable.
 **References:** Project-wide
+
+---
+
+### D-006: Website as the universal bootstrap point
+
+**Date:** 2026-03-04
+**Context:** Needed to determine how a user — especially a non-technical one — actually starts using 4SAGE. The framework lives in a git repo, but most users don't know what git is.
+**Decided:** 4sage.dev serves as the single entry point for all users. The website is simultaneously a human-readable landing page and an LLM-readable instruction set. When a user tells any LLM "I want to use the 4SAGE framework," the LLM fetches 4sage.dev and gets everything it needs to bootstrap the experience.
+**Alternatives considered:**
+- GitHub repo only — rejected because: requires users to know git, find the repo, and understand the file structure. Too high a barrier for non-technical users.
+- Downloadable app or installer — rejected because: high development cost, platform-specific builds, update distribution problem. Overkill when the LLM itself can handle setup.
+- Published as an LLM plugin/extension only — rejected because: locks the framework to a specific LLM vendor. Against the LLM-agnostic principle.
+**Rationale:** The website is the lowest-friction entry point that works for everyone. Technical users get the repo link. Non-technical users get step-by-step guidance. LLMs get machine-readable setup instructions. One URL serves all three audiences. The LLM does the heavy lifting of setup — the website just tells it what to do.
+**References:** Website planning, `README.md`
+
+---
+
+### D-007: Three-tier onramp (text, project, voice)
+
+**Date:** 2026-03-04
+**Context:** Users will have vastly different technical capabilities and hardware. Needed to define what "getting started" looks like for different user profiles.
+**Decided:** Three tiers of engagement, all starting from 4sage.dev:
+1. **Text only** — user chats with any LLM in a browser. No local files, no git, no installation. The LLM follows the framework in conversation. Lowest barrier.
+2. **Full project** — user has Claude Code or similar tool. The LLM clones the repo, sets up local files, initializes git, and runs the guided interview with version-controlled output. Full methodology.
+3. **Voice interactive** — full project setup plus speech-to-text and text-to-speech. The user has a verbal conversation with their AI game design consultant. Highest experience quality.
+**Alternatives considered:**
+- Single path only (full project) — rejected because: excludes the majority of potential users who don't have CLI tools installed.
+- Voice only as the primary experience — rejected because: requires specific hardware and complex setup. Should be an option, not a requirement.
+- Web app that wraps an LLM API — rejected because: high development cost, ongoing hosting cost, API key management, locks to one LLM provider.
+**Rationale:** Each tier adds capability without invalidating the others. A user can start at Tier 1 (just chatting) and graduate to Tier 2 or 3 as they get more invested. The framework itself is identical across all tiers — only the delivery channel changes.
+**References:** Website planning, `FRAMEWORK.md`
+
+---
+
+### D-008: Conductor prompt as the core execution mechanism
+
+**Date:** 2026-03-04
+**Context:** The framework files (FRAMEWORK.md, KDD levels) describe the methodology, but they don't contain explicit instructions telling an LLM *how to run a session*. An LLM reading FRAMEWORK.md understands the theory but lacks the step-by-step operating procedure.
+**Decided:** Create a "conductor prompt" — a dedicated document that instructs any LLM on exactly how to conduct a 4SAGE design session. This prompt is the bridge between the framework (what to ask) and the experience (how to ask it). It will be hosted on 4sage.dev and included in the repo.
+**Alternatives considered:**
+- Embed instructions in each KDD file — rejected because: scatters the execution logic across 7+ files. Hard to maintain, hard for an LLM to follow a single coherent flow.
+- Rely on the LLM to figure it out from FRAMEWORK.md — rejected because: different LLMs would interpret the methodology differently, leading to inconsistent experiences. Explicit is better than implicit.
+- Build a software orchestrator — rejected because: adds a software dependency, breaks LLM-agnosticism, and is unnecessary when the LLM itself can follow instructions.
+**Rationale:** The conductor prompt is the "how" that complements the framework's "what." It tells the LLM: start here, ask this, record the answer this way, generate follow-ons this way, be frank when this happens, move to the next level when this condition is met. One document, universally applicable, works with any LLM.
+**References:** `conductor.md` (to be created), website planning
+
+---
+
+### D-009: Voice-interactive tier with guided hardware/software setup
+
+**Date:** 2026-03-04
+**Context:** The ideal 4SAGE experience is a natural conversation — the user talks about their game idea and the AI consultant responds verbally. This requires speech-to-text (STT) and text-to-speech (TTS) infrastructure that most users won't have.
+**Decided:** The voice tier includes an LLM-guided setup process: the website and conductor prompt contain a voice setup matrix (per platform, per LLM tool) so the LLM can walk the user through installing and configuring STT and TTS on their specific system. The LLM handles the setup, involving the user only when necessary (e.g., "plug in a microphone," "say hello to test").
+**Alternatives considered:**
+- Require users to set up voice themselves before starting — rejected because: contradicts the "start from scratch" principle. If the user could set up voice pipelines, they probably don't need hand-holding for game design either.
+- Browser-based voice (Web Speech API) — considered as a simpler alternative for Tier 1 users. Not rejected — may be a good intermediate option. But doesn't provide the full local experience.
+- Skip voice entirely — rejected because: voice interaction is a significantly better experience for creative brainstorming. Worth the setup complexity for users who want it.
+**Rationale:** The LLM is already guiding the user through game design decisions — it can also guide them through technical setup. The voice setup matrix on the website gives the LLM the platform-specific knowledge it needs. This is consistent with the framework's philosophy: the AI handles complexity so the human can focus on creative decisions.
+**References:** Website planning, voice setup matrix (to be created)
