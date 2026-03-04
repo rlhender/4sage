@@ -81,7 +81,6 @@ discoveries force reconsideration of higher-level choices.
 ## Intellectual Foundations
 
 The 4SAGE Framework synthesizes ideas from:
-- **4GRP Framework** (4th Generation Resource Planning) — cascading decision methodology, priority system, structured markdown, decision logging
 - **MDA Framework** (Hunicke, LeBlanc, Zubek) — Mechanics, Dynamics, Aesthetics vocabulary for reasoning about player experience
 - **Traditional GDD practice** — decades of game design document conventions for topic coverage
 - **Lafley & Martin** (Strategy Choice Cascade) — cascading choices where each level constrains the next

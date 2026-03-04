@@ -30,7 +30,7 @@ engine before you know your visual fidelity requirements. You cannot design
 level layouts before you know your core mechanics. You cannot define your
 core mechanics before you know what experience you're trying to create.
 
-*Borrowed from: Lafley & Martin's Strategy Choice Cascade, adapted via 4GRP*
+*Borrowed from: Lafley & Martin's Strategy Choice Cascade*
 
 ### 2. The Cascade Is Iterative
 
@@ -39,8 +39,7 @@ infeasible or suboptimal. The framework supports upward feedback — surfacing
 a constraint discovered at L5 (Architecture) that forces a reconsideration
 at L2 (Core Design). This is not a failure; it is the system working.
 
-*Borrowed from: Strategy Choice Cascade ("reverse engineering"), 4GRP
-iterative convergence*
+*Borrowed from: Strategy Choice Cascade ("reverse engineering")*
 
 ### 3. Every Decision Has a Priority
 
@@ -56,7 +55,7 @@ Each decision is classified by how much flexibility exists:
 When decisions conflict, higher priority wins. A Nice-to-Have never
 overrides a Must-Have.
 
-*Borrowed from: MoSCoW (DSDM), adapted via 4GRP*
+*Borrowed from: MoSCoW (DSDM)*
 
 ### 4. Six Questions at Every Level
 
@@ -74,7 +73,7 @@ At each level of the cascade, decisions are examined across six dimensions:
 Not every dimension applies to every decision, but the framework ensures
 none are overlooked.
 
-*Borrowed from: Zachman Framework (six interrogatives), adapted via 4GRP*
+*Borrowed from: Zachman Framework (six interrogatives)*
 
 ### 5. Best Practice First, Then Diverge
 
@@ -86,7 +85,7 @@ justification.
 This is faster than starting from blank, more disciplined than unconstrained
 design, and produces better documentation.
 
-*Borrowed from: SAP Activate (fit-to-standard), adapted via 4GRP*
+*Borrowed from: SAP Activate (fit-to-standard)*
 
 ### 6. The AI Is the Guide, Not the Authority
 
@@ -105,7 +104,7 @@ To prevent hallucination, the LLM must consult the `knowledge-base/`
 directory (containing genre conventions, platform constraints, and design
 patterns) before finalizing KDDs.
 
-*Innovation adapted from: 4GRP (LLM-guided dialogue for systematic
+*Original to 4SAGE (LLM-guided dialogue for systematic
 decision capture)*
 
 ### 7. Decisions Have Typed Relationships
@@ -121,7 +120,7 @@ Decisions relate to each other in specific ways:
 | **overrides** | Replaces a previous decision (with justification and audit trail) |
 | **depends-on** | Cannot be resolved until the source decision is answered |
 
-*Borrowed from: Zimmermann's Architectural Decision Models, adapted via 4GRP*
+*Borrowed from: Zimmermann's Architectural Decision Models*
 
 ### 8. Every Level Has a Corresponding Validation
 
@@ -138,7 +137,7 @@ L5  Architecture           ◄────────── Integration / perfo
 L6  Implementation         ◄────────── Unit testing / TDD
 ```
 
-*Borrowed from: V-Model (Systems Engineering), adapted via 4GRP*
+*Borrowed from: V-Model (Systems Engineering)*
 
 ### 9. Don't Overwhelm — Delegate to the AI When the User Doesn't Care
 
@@ -360,16 +359,16 @@ project-root/
 
 | Concept | Source | How It Is Used |
 |---------|--------|---------------|
-| Cascading choices | Lafley & Martin, *Playing to Win* (2013), via 4GRP | Core structure — each level constrains the next |
-| Iterative feedback | Strategy Choice Cascade, via 4GRP | Lower levels can surface issues that revise higher levels |
-| Six interrogatives | Zachman Framework, via 4GRP | What/How/Where/Who/When/Why at every level |
-| MH/SH/NH/WH priorities | MoSCoW (DSDM), adapted via 4GRP | Decision classification |
-| Decision dependency graphs | Zimmermann et al., via 4GRP | Typed relationships between decisions |
-| Best practice first | SAP Activate, adapted via 4GRP | Present conventions, diverge with justification |
-| Verification pyramid | V-Model (Systems Engineering), via 4GRP | Each design level has corresponding validation |
+| Cascading choices | Lafley & Martin, *Playing to Win* (2013) | Core structure — each level constrains the next |
+| Iterative feedback | Strategy Choice Cascade | Lower levels can surface issues that revise higher levels |
+| Six interrogatives | Zachman Framework | What/How/Where/Who/When/Why at every level |
+| MH/SH/NH/WH priorities | MoSCoW (DSDM) | Decision classification |
+| Decision dependency graphs | Zimmermann et al. | Typed relationships between decisions |
+| Best practice first | SAP Activate | Present conventions, diverge with justification |
+| Verification pyramid | V-Model (Systems Engineering) | Each design level has corresponding validation |
 | Mechanics/Dynamics/Aesthetics | MDA Framework (Hunicke et al., 2004) | Vocabulary for reasoning about player experience |
 | Game design document topics | Traditional GDD practice | Ensures complete topic coverage at each level |
-| LLM-guided dialogue | 4GRP original innovation | Dynamic question generation, ongoing queryability |
+| LLM-guided dialogue | 4SAGE original | Dynamic question generation, ongoing queryability |
 
 ---
 

@@ -171,7 +171,7 @@ resources:
 **Question:** What external commitments, obligations, or constraints already exist?
 
 **Why this matters:**
-Like existing systems in ERP, games rarely start from zero. There may be
+Games rarely start from zero. There may be
 publisher contracts, IP licensing agreements, engine commitments, or prior
 work that constrains the design. These are facts on the ground.
 
