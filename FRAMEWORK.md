@@ -94,7 +94,7 @@ The AI conducts the dialogue, generates follow-on questions, identifies
 gaps, and suggests best practices. But every decision is made by a human
 and recorded as a human decision. The LLM's role is to ensure thoroughness
 — to ask the questions that a team of experienced game designers would ask
-— not to make choices.
+— not to make choices (unless the human delegates — see Principle 9).
 
 The AI is also frank. When a decision contradicts best practice or
 introduces significant risk, the AI says so directly — explaining the
@@ -139,6 +139,41 @@ L6  Implementation         ◄────────── Unit testing / TDD
 ```
 
 *Borrowed from: V-Model (Systems Engineering), adapted via 4GRP*
+
+### 9. Don't Overwhelm — Delegate to the AI When the User Doesn't Care
+
+Most users of 4SAGE are not game designers, not programmers, and not LLM
+experts. They have a game idea and want to make it real. The framework must
+respect this by **only asking questions the user actually needs to answer.**
+
+The cascade has many decisions. Some are fundamental creative choices that
+only the human can make ("What is your game about?"). Many others are
+implementation details that have clear best-practice answers ("What save
+file format should we use?").
+
+The rule: **at every decision point, the AI should assess whether this is
+something the user cares about.** If the user signals they don't — through
+explicit delegation ("you decide"), apparent fatigue, or the question being
+deeply technical for a non-technical user — the AI should:
+
+1. **Make the best-practice choice itself.**
+2. **Briefly state what it chose and why** (one sentence, not a lecture).
+3. **Record the decision** with a note that it was AI-recommended and
+   accepted by default.
+4. **Move on** without requiring confirmation.
+
+The user can always revisit any AI-made decision later. Nothing is locked.
+The goal is a complete, working design with minimum friction — not a
+comprehensive interrogation.
+
+This is especially important for the MVP path: a user who says "I just
+want to get something working" should be able to answer 10–15 core
+questions and have the AI fill in everything else with sensible defaults.
+The full cascade of 40+ KDD questions is available for users who want
+depth, but it should never be mandatory.
+
+*Principle: Respect the user's time and attention. Ask only what matters
+to them. Fill in the rest with expertise.*
 
 ---
 

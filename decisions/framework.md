@@ -134,3 +134,21 @@ structure, methodology, and tooling.
 - Skip voice entirely — rejected because: voice interaction is a significantly better experience for creative brainstorming. Worth the setup complexity for users who want it.
 **Rationale:** The LLM is already guiding the user through game design decisions — it can also guide them through technical setup. The voice setup matrix on the website gives the LLM the platform-specific knowledge it needs. This is consistent with the framework's philosophy: the AI handles complexity so the human can focus on creative decisions.
 **References:** Website planning, voice setup matrix (to be created)
+
+---
+
+### D-010: Don't overwhelm — AI delegation and MVP mode
+
+**Date:** 2026-03-04
+**Context:** The framework has 40+ KDD questions across 7 levels. The primary expected user is non-technical, not a game designer, and not an LLM expert. They have a game idea and want to make it real without answering dozens of detailed questions they don't understand or care about.
+**Decided:** Add Principle 9 ("Don't Overwhelm") to the framework and build three engagement modes into the conductor prompt:
+1. **Deep mode** — user discusses every decision (for experts who want control).
+2. **Guided mode** — user makes key creative choices; AI handles the rest with best-practice defaults, briefly stating each choice.
+3. **MVP mode** — user answers ~15 essential questions; AI fills in everything else and produces a complete design document. User reviews and revises later.
+The AI must detect the user's engagement level and offer delegation proactively. When a user says "you decide" or shows fatigue, the AI takes over without asking "are you sure?" All AI-made decisions are recorded as such and are always revisitable.
+**Alternatives considered:**
+- Always ask every question (original approach) — rejected because: overwhelms non-technical users. Most people don't want to answer 40 questions. They want a working game design with minimum friction.
+- Skip levels entirely for non-technical users — rejected because: skipping levels creates gaps. Better to have the AI fill in best-practice answers than to leave sections empty.
+- Separate "simple" and "advanced" question sets — rejected because: artificial separation. The same question can be simple or complex depending on the user's answer. Better to let the AI adapt dynamically.
+**Rationale:** The framework should serve the user, not the other way around. A non-technical user should be able to go from "I have an idea for a game" to a complete, well-structured design document in one conversation. The AI's expertise is the product — the questions are just the mechanism. Respecting the user's time and attention is a core principle, not an optimization.
+**References:** `FRAMEWORK.md` → Principle 9, `conductor.md` → Delegation section
