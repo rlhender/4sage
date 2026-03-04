@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>4SAGE — Design Your Game with AI</title>
+  <meta name="description" content="4SAGE is a free, open framework that guides you through designing a game using any AI assistant as your game design consultant.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Hero -->
+<header class="hero">
+  <h1>4SAGE</h1>
+  <p class="subtitle">Structured AI-Guided Experience Design</p>
+  <p class="tagline">Design your game with AI — from first idea to implementation plan.</p>
+  <a href="#get-started" class="cta">Get Started</a>
+</header>
+
+<!-- What Is 4SAGE -->
+<section id="what">
+  <h2>What Is 4SAGE?</h2>
+  <p>
+    4SAGE is a free, open methodology that turns any AI assistant into your
+    personal game design consultant. It guides you through designing a game
+    by asking the right questions in the right order — starting with your
+    vision and working down through player experience, mechanics, content,
+    art, technology, and implementation.
+  </p>
+  <p>
+    You make every decision. The AI makes sure you don't miss anything.
+    Every choice is recorded — what you decided, what you considered, and why.
+  </p>
+  <p>
+    It works with any AI — Claude, ChatGPT, Gemini, or any other large
+    language model. No special software required.
+  </p>
+
+  <div class="cascade">
+    <h3>The Design Cascade</h3>
+    <p>Decisions flow from vision to implementation. Each level constrains the next.</p>
+    <ol class="levels">
+      <li><strong>L0 — Vision &amp; Constraints</strong><span>What game? Who for? What resources?</span></li>
+      <li><strong>L1 — Player Experience</strong><span>How should it feel to play?</span></li>
+      <li><strong>L2 — Core Design</strong><span>What does the player do? Game loop, mechanics.</span></li>
+      <li><strong>L3 — Systems &amp; Content</strong><span>Detailed systems, narrative, world design.</span></li>
+      <li><strong>L4 — Presentation</strong><span>Art, audio, UI, game feel.</span></li>
+      <li><strong>L5 — Architecture</strong><span>Engine, tools, performance targets.</span></li>
+      <li><strong>L6 — Implementation</strong><span>Code, testing, deployment, post-launch.</span></li>
+    </ol>
+  </div>
+</section>
+
+<!-- Get Started -->
+<section id="get-started">
+  <h2>Get Started</h2>
+  <p>Choose the path that fits you. You can always upgrade later.</p>
+
+  <div class="paths">
+
+    <div class="path">
+      <h3>💬 Just Chat</h3>
+      <p class="path-label">Easiest — no setup</p>
+      <p>
+        Open any AI assistant
+        (<a href="https://chat.openai.com" rel="noopener">ChatGPT</a>,
+        <a href="https://claude.ai" rel="noopener">Claude</a>,
+        <a href="https://gemini.google.com" rel="noopener">Gemini</a>,
+        or any other) and paste this:
+      </p>
+      <pre class="prompt-box">I want to design a game using the 4SAGE framework.
+
+Please fetch the instructions at https://4sage.dev and then guide me
+through the 4SAGE game design process, starting at Level 0.
+
+Act as my game design consultant: ask one question at a time, explain
+why each question matters, offer best-practice defaults, be frank when
+my choices have risks, and record every decision with alternatives
+considered.
+
+Follow the 4SAGE design cascade (L0 Vision → L1 Experience → L2 Core
+Design → L3 Systems → L4 Presentation → L5 Architecture → L6
+Implementation). Generate follow-on questions based on my answers.</pre>
+      <p>The AI reads this page and starts the design interview.</p>
+    </div>
+
+    <div class="path">
+      <h3>📁 Full Project</h3>
+      <p class="path-label">Recommended — saves your work</p>
+      <p>
+        If you have an AI coding tool
+        (<a href="https://claude.ai/claude-code" rel="noopener">Claude Code</a>,
+        <a href="https://cursor.com" rel="noopener">Cursor</a>,
+        or similar), tell it:
+      </p>
+      <pre class="prompt-box">I want to design a game using the 4SAGE framework at https://4sage.dev
+
+Set up a local 4SAGE project for me: clone the framework repo, create
+my game's project directory with the template files, initialize git,
+and then start the design interview at Level 0.</pre>
+      <p>
+        Your AI sets up a version-controlled project on your computer.
+        Every decision is saved in structured files you can review,
+        share, and revise.
+      </p>
+    </div>
+
+    <div class="path">
+      <h3>🎙️ Voice Interactive</h3>
+      <p class="path-label">Best experience — talk to your consultant</p>
+      <p>
+        Have a verbal conversation with your AI game design consultant.
+        Requires a microphone and speakers. Tell your AI coding tool:
+      </p>
+      <pre class="prompt-box">I want to design a game using 4SAGE at https://4sage.dev with voice
+interaction.
+
+Help me set up speech-to-text and text-to-speech on my system, then
+start the 4SAGE design interview at Level 0. I want to talk through
+my game design verbally.</pre>
+      <p>
+        The AI walks you through setting up voice input and output on
+        your specific system, then transitions into the design interview.
+      </p>
+    </div>
+
+    <div class="path">
+      <h3>🔧 Developer</h3>
+      <p class="path-label">Clone the repo, read the docs</p>
+      <pre class="prompt-box">git clone https://github.com/richcollector/4sage.git
+cd 4sage
+cat README.md</pre>
+      <p>
+        The framework is plain Markdown files in a git repo.
+        Start with <code>README.md</code>, then <code>FRAMEWORK.md</code>,
+        then <code>CONTRIBUTING.md</code>.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+<!-- How It Works -->
+<section id="how-it-works">
+  <h2>How It Works</h2>
+
+  <div class="example">
+    <h3>Example: Starting a Design Session</h3>
+    <div class="dialogue">
+      <div class="ai">
+        <strong>AI Consultant:</strong>
+        Let's start with the big picture. <strong>KDD-0.1: What is your game?</strong>
+        Describe the core idea in a few sentences — the genre, the tone,
+        what makes it interesting. This is your elevator pitch, and every
+        decision we make will trace back to it.
+      </div>
+      <div class="human">
+        <strong>You:</strong>
+        It's a turn-based tactics game set in a fantasy world. You command
+        a small squad of characters with unique abilities. Think Fire Emblem
+        but with more emphasis on terrain and positioning.
+      </div>
+      <div class="ai">
+        <strong>AI Consultant:</strong>
+        Great — turn-based tactics with terrain emphasis. That's a well-established
+        genre with clear conventions we can lean on. I'm recording this as your
+        core concept.
+        <br><br>
+        A few follow-on questions before we move on:
+        <br>
+        • What existing games are your main references beyond Fire Emblem?
+        This helps me calibrate the scope and complexity you're aiming for.
+        <br>
+        • Is this an original IP or based on existing material?
+        <br><br>
+        Then we'll move to <strong>KDD-0.2: Who is this game for?</strong> —
+        your target audience shapes everything from difficulty to session length.
+      </div>
+    </div>
+  </div>
+
+  <h3>What Gets Recorded</h3>
+  <p>
+    Every decision captures what was chosen, what was considered, and why.
+    Nothing is lost. You can always go back and understand the reasoning
+    behind any design choice — or change your mind and trace the impact.
+  </p>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <h2>FAQ</h2>
+
+  <details>
+    <summary>Is this free?</summary>
+    <p>Yes. 4SAGE is open source under the MIT license. The framework files
+    are free to use, modify, and share. You will need access to an AI
+    assistant (some are free, some are paid).</p>
+  </details>
+
+  <details>
+    <summary>Which AI should I use?</summary>
+    <p>Any large language model works — Claude, ChatGPT, Gemini, Llama, or
+    others. The framework is LLM-agnostic by design. For the best experience
+    with local file management, we recommend Claude Code or a similar AI
+    coding tool.</p>
+  </details>
+
+  <details>
+    <summary>Do I need to know programming?</summary>
+    <p>No. The framework covers everything from initial concept through
+    implementation, but you can stop at any level. Many users will focus
+    on Levels 0–4 (vision through presentation) and hand off the technical
+    levels to a developer.</p>
+  </details>
+
+  <details>
+    <summary>Can I use this for a team project?</summary>
+    <p>Yes. The git-based project structure supports collaboration. Multiple
+    people can review and contribute to design decisions. The decision log
+    ensures everyone understands the reasoning behind choices.</p>
+  </details>
+
+  <details>
+    <summary>What if the AI gives bad advice?</summary>
+    <p>The framework records every decision with its alternatives and
+    rationale. You can always review the reasoning, get a second opinion
+    from another AI or human, and revise. The AI is a guide, not the
+    authority — every decision is yours.</p>
+  </details>
+
+  <details>
+    <summary>Can I use this for non-game projects?</summary>
+    <p>4SAGE is designed for games, but the methodology (cascading decisions,
+    priority classification, structured dialogue) can be adapted. See
+    <a href="https://github.com/richcollector/erp-concept">4GRP</a> for the
+    same approach applied to ERP system design.</p>
+  </details>
+</section>
+
+<!-- LLM Instructions -->
+<section id="llm-instructions">
+  <h2>LLM Setup Instructions</h2>
+  <p>
+    <em>This section is for AI assistants setting up a 4SAGE session.
+    Humans: you don't need to read this — your AI will.</em>
+  </p>
+
+  <h3>Framework Repository</h3>
+  <pre>https://github.com/richcollector/4sage.git</pre>
+
+  <h3>Bootstrap Procedure (Tier 2: Full Project)</h3>
+  <ol>
+    <li>Clone the framework repository.</li>
+    <li>Create a new directory for the user's game project.</li>
+    <li>Copy the KDD template files (L0 through L6) into the project's <code>kdd/</code> directory.</li>
+    <li>Copy <code>FRAMEWORK.md</code>, <code>CONTRIBUTING.md</code>, and directory structure (<code>decisions/</code>, <code>knowledge-base/</code>, <code>architecture/</code>, <code>common/</code>, <code>references/</code>).</li>
+    <li>Initialize a git repository in the project directory.</li>
+    <li>Make an initial commit with the template files.</li>
+    <li>Read <code>conductor.md</code> from the framework repository — it contains your complete operating instructions for running the session.</li>
+    <li>Begin the dialogue at Level 0, KDD-0.1.</li>
+  </ol>
+
+  <h3>Bootstrap Procedure (Tier 1: Chat Only)</h3>
+  <ol>
+    <li>Fetch and read <code>conductor.md</code> from the framework repository (raw URL: <code>https://raw.githubusercontent.com/richcollector/4sage/main/conductor.md</code>).</li>
+    <li>Follow the conductor prompt instructions for Tier 1 (chat-only) sessions.</li>
+    <li>Begin the dialogue at Level 0, KDD-0.1.</li>
+  </ol>
+
+  <h3>Key Files to Read</h3>
+  <ul>
+    <li><code>conductor.md</code> — <strong>Read this first.</strong> Complete operating instructions for running a 4SAGE session.</li>
+    <li><code>FRAMEWORK.md</code> — The methodology: principles, cascade, structured block types.</li>
+    <li><code>CONTRIBUTING.md</code> — File conventions, priority labels, naming rules.</li>
+    <li><code>kdd/L0-vision.md</code> through <code>kdd/L6-implementation.md</code> — The pre-planned questions at each level.</li>
+    <li><code>knowledge-base/</code> — Reference material to ground your recommendations (consult before finalizing KDDs).</li>
+  </ul>
+
+  <h3>Conductor Prompt Summary</h3>
+  <p>
+    You are a game design consultant. You guide the human through the 4SAGE
+    design cascade (L0→L6) by asking one question at a time, explaining why
+    it matters, offering best-practice defaults, recording every decision
+    with alternatives, and being frank when choices carry risks. See
+    <code>conductor.md</code> for full instructions including: when to push
+    back, when to defer, level-specific guidance, handling beginners vs.
+    experts, and quality checklists.
+  </p>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>
+    4SAGE is open source under the
+    <a href="https://github.com/richcollector/4sage/blob/main/LICENSE">MIT License</a>.
+  </p>
+  <p>
+    <a href="https://github.com/richcollector/4sage">GitHub</a>
+  </p>
+</footer>
+
+</body>
+</html>
