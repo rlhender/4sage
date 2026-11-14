@@ -9,7 +9,7 @@ const { startServer } = await import('../server/server.js');
 
 const server = await startServer(0);
 const { port } = server.address();
-test.after(() => server.close());
+test.after(() => server.shutdown());
 
 // A test client that records every message and lets tests wait for one.
 function client() {
@@ -137,6 +137,7 @@ test('bots with different strategies fill seats and play alongside a human', asy
   host.send({ t: 'addBot', strategy: 'aggressive' });
   host.send({ t: 'addBot', strategy: 'fortress' });
   const lobby = await host.next(isRoom((m) => m.players.length === 3));
+  assert.deepEqual(lobby.players.map((p) => p.kind), ['human', 'bot', 'bot']);
   assert.match(lobby.players[1].name, /aggressive bot/);
   assert.match(lobby.players[2].name, /fortress bot/);
   host.send({ t: 'start' });

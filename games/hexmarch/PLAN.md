@@ -15,9 +15,9 @@ and anyone (a person or another model) can pick the work up from here.
 
 _Update this section at the end of every working session._
 
-- Milestones 0 to 2 are built, tested and pushed.
-- Milestones 3 to 7 are planned below and not started.
-- Next up: milestone 3.
+- Milestones 0 to 4 are built, tested and pushed, plus saving games to disk (part of 5).
+- Still to do: the deployment kit (5), the balance lab (6), and the agent kit's skill file (7).
+- Next up: finish milestone 5.
 
 ## What the owner asked for
 
@@ -98,26 +98,26 @@ So rule sets can be compared without touching code.
 
 ### 3. HTTP API for agents
 
-- [ ] MH `server/rooms.js`: room logic separated from transports
-- [ ] MH Endpoints: create room, join, add bot, start, state (long-poll),
+- [x] MH `server/rooms.js`: room logic separated from transports
+- [x] MH Endpoints: create room, join, add bot, start, state (long-poll),
       submit, retract, leave, rematch, odds, guide
-- [ ] MH Token per seat (`Authorization: Bearer`), agents shown as players in the lobby
-- [ ] MH Long-polling with a version counter
-- [ ] SH Room option for the phase time limit (models can be slow)
-- [ ] MH `GET /api/guide`: rules and API instructions served by the game itself
-- [ ] MH Tests: an agent plays a full game over HTTP beside a WebSocket human
+- [x] MH Token per seat (`Authorization: Bearer`), agents shown as players in the lobby
+- [x] MH Long-polling with a version counter
+- [x] SH Room option for the phase time limit (models can be slow)
+- [x] MH `GET /api/guide`: rules and API instructions served by the game itself
+- [x] MH Tests: an agent plays a full game over HTTP beside a WebSocket human
 
 ### 4. MCP endpoint
 
-- [ ] MH `POST /mcp` (Streamable HTTP, stateless JSON responses): initialize,
+- [x] MH `POST /mcp` (Streamable HTTP, stateless JSON responses): initialize,
       tools/list, tools/call, ping
-- [ ] MH Tools mirroring the HTTP API, with JSON Schemas
-- [ ] MH Test against the official MCP client (dev dependency only)
+- [x] MH Tools mirroring the HTTP API, with JSON Schemas
+- [x] MH Test against the official MCP client (dev dependency only)
 
 ### 5. Persistence and deployment
 
-- [ ] MH Rooms saved to `DATA_DIR` on change and restored at start
-- [ ] SH Finished games written as records for later analysis
+- [x] MH Rooms saved to `DATA_DIR` on change and restored at start
+- [x] SH Finished games written as records for later analysis
 - [ ] MH `deploy/`: systemd unit, reverse-proxy example with TLS and WebSocket
       upgrade, environment file, step-by-step guide
 - [ ] MH Clean-clone check: `npm ci --omit=dev && npm start` serves the game
@@ -138,9 +138,9 @@ So rule sets can be compared without touching code.
 
 ### 7. Agent kit
 
-- [ ] MH `examples/http-agent.js`: a complete outside player in one file,
+- [x] MH `examples/http-agent.js`: a complete outside player in one file,
       usable as a template for any language or model
-- [ ] MH `AGENTS.md`: connect an AI by HTTP or MCP, with copy-paste examples
+- [x] MH `AGENTS.md`: connect an AI by HTTP or MCP, with copy-paste examples
 - [ ] SH `skill/hexmarch-player/SKILL.md` for harnesses that load skills
 
 ## Later

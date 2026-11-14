@@ -9,6 +9,7 @@ import { describeEvent, describePlacements } from '/engine/report.js';
 const COLORS = ['#e5534b', '#4c9aff', '#3fb950', '#f0b429', '#b072e8', '#22c3bd'];
 const NEUTRAL_COLOR = '#5d6b7a';
 const STRATEGIES = ['balanced', 'aggressive', 'fortress', 'passive', 'tuned'];
+const TIME_LIMITS = [[60, '1 minute a phase'], [180, '3 minutes a phase'], [600, '10 minutes a phase'], [1800, '30 minutes a phase'], [0, 'No time limit']];
 const HEX = 20; // hex size in SVG units
 const SESSION_KEY = 'hexmarch:session';
 const NAME_KEY = 'hexmarch:name';
@@ -138,12 +139,13 @@ let botStrategy = 'balanced';
 function renderLobby() {
   const isHost = room.hostId === room.you;
   $('#lobbyCode').textContent = room.code;
-  $('#lobbyPlayers').replaceChildren(...room.players.map((p, seat) => el('li', {},
+  $('#lobbyPlayers').replaceChildren(...room.players.map((p, seat) => el('li', { style: 'flex-wrap:nowrap' },
     el('span', { class: 'dot', style: `background:${COLORS[seat]}` }),
     el('span', { class: 'name', text: p.name }),
     p.id === room.you && el('span', { class: 'tag', text: 'you' }),
     p.id === room.hostId && el('span', { class: 'tag', text: 'host' }),
-    isHost && p.isBot && el('button', { text: 'Remove', onclick: () => send({ t: 'removeBot', id: p.id }) }),
+    p.kind === 'agent' && el('span', { class: 'tag', text: 'AI' }),
+    isHost && p.id !== room.you && el('button', { text: 'Remove', onclick: () => send({ t: 'remove', id: p.id }) }),
   )));
   if (!isHost) {
     $('#lobbyActions').replaceChildren(el('span', { class: 'hint', text: 'Waiting for the host to start the game…' }));
@@ -156,6 +158,8 @@ function renderLobby() {
     pick,
     el('button', { text: 'Add bot', disabled: room.players.length >= 6, onclick: () => send({ t: 'addBot', strategy: botStrategy }) }),
     el('button', { text: 'Copy invite link', onclick: copyInvite }),
+    el('select', { 'aria-label': 'Time limit for each phase', onchange: (e) => send({ t: 'options', phaseSeconds: Number(e.target.value) }) },
+      TIME_LIMITS.map(([seconds, text]) => el('option', { value: seconds, selected: seconds === room.options.phaseSeconds, text }))),
   );
 }
 
@@ -461,7 +465,8 @@ function renderSide(g) {
       el('span', { class: 'dot', style: `background:${COLORS[p.seat]}` }),
       el('span', { class: 'name', text: p.name }),
       p.seat === g.you && el('span', { class: 'tag', text: 'you' }),
-      !info.isBot && !info.connected && el('span', { class: 'tag', text: 'away' }),
+      info.kind === 'agent' && el('span', { class: 'tag', text: 'AI' }),
+      info.kind === 'human' && !info.connected && el('span', { class: 'tag', text: 'away' }),
       el('span', { class: 'stat', text: p.alive ? `${p.territories} territories · ${p.armies} armies · +${p.income} a round` : 'castle fallen' }),
     );
   }));

@@ -17,5 +17,8 @@
   },
   "bin": {
     "hexmarch": "cli/hexmarch.js"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2"
   }
 }
