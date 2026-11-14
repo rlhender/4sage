@@ -7,6 +7,7 @@ import {
 import { captureOdds, clashOdds } from '../engine/odds.js';
 import { DEFAULT_RULES, parseRule, resolveRules } from '../engine/rules.js';
 import { describeEvent } from '../engine/report.js';
+import { briefing } from '../engine/briefing.js';
 
 const names = (n) => Array.from({ length: n }, (_, i) => `P${i + 1}`);
 
@@ -372,4 +373,51 @@ test('fallen land can pass to the captor, and the smaller force can fight first'
   seal(duelState, 0, [{ from: a, to: c, armies: 10 }]);
   seal(duelState, 1, [{ from: d, to: c, armies: 40 }]);
   assert.equal(events(duelState).find((e) => e.type === 'battle').attacker, 0);
+});
+
+// ---------- briefing ----------
+
+test('the briefing alone is enough to make a legal move in each phase', () => {
+  const state = createGame({ players: ['Ada', 'Grace', 'Edsger'], seed: 14 });
+  for (let step = 0; step < 6 && state.phase !== 'over'; step++) {
+    state.players.forEach((p, seat) => {
+      if (!p.alive || state.phase === 'over') return;
+      const text = briefing(observe(state, seat));
+      // Read only the text: the reply shape, the income, and the first territory line that can send.
+      assert.match(text, new RegExp(`you: ${p.name} \\(seat ${seat}\\)`));
+      if (text.includes('"placements"')) {
+        const income = Number(text.match(/place exactly (\d+) new armies/)[1]);
+        const castle = Number(text.match(/#(\d+) [^:]+ \(YOUR CASTLE\)/)[1]);
+        assert.ok(submit(state, seat, { placements: [{ territory: castle, armies: income }] }).ok);
+      } else {
+        assert.match(text, /"orders"/);
+        const line = text.split('\n').find((l) => /^#\d+ .*can send [1-9]\d* \| borders #\d+/.test(l));
+        const orders = [];
+        if (line) {
+          const [, from, send, to] = line.match(/^#(\d+) .*can send (\d+) \| borders #(\d+)/);
+          orders.push({ from: Number(from), to: Number(to), armies: Number(send) });
+        }
+        const outcome = submit(state, seat, { orders });
+        assert.ok(outcome.ok, outcome.error);
+      }
+    });
+  }
+  assert.ok(state.history.some((h) => h.events), 'at least one round was played from briefings alone');
+});
+
+test('the briefing reports the board faithfully and stays compact', () => {
+  const state = createGame({ players: ['Ada', 'Grace'], seed: 3, rules: { castleDefence: 1 } });
+  const view = observe(state, 0);
+  const text = briefing(view);
+  for (const t of view.territories.filter((x) => x.owner === 0)) {
+    assert.ok(text.includes(`#${t.id} ${t.name}`) && text.includes(`${t.armies} ${t.armies === 1 ? 'army' : 'armies'}, can send ${t.armies - 1}`), t.name);
+  }
+  assert.match(text, /House rules in this game: castleDefence=1/);
+  assert.match(text, new RegExp(`castle #${view.players[1].castle} `));
+  assert.ok(text.length < 6000, `briefing is ${text.length} characters`); // about 1,500 tokens
+
+  submit(state, 0, { placements: [{ territory: state.players[0].castle, armies: state.income[0] }] });
+  assert.match(briefing(observe(state, 0)), /YOU HAVE SEALED THIS PHASE/);
+  assert.doesNotMatch(briefing(observe(state, 1)), /SEALED THIS PHASE/);
+  assert.match(briefing(observe(state, 1)), /Ada.*has sealed/);
 });

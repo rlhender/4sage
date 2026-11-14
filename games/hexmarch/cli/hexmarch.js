@@ -8,6 +8,7 @@ import path from 'node:path';
 import { createGame, exportRecord, observe, submit } from '../engine/engine.js';
 import { captureOdds, clashOdds } from '../engine/odds.js';
 import { RULES, parseRule } from '../engine/rules.js';
+import { briefing } from '../engine/briefing.js';
 import { describeEvent, describePlacements } from '../engine/report.js';
 import { PRESETS, act, makeAgent } from '../ai/strategies.js';
 import { simulate, tune } from '../ai/arena.js';
@@ -25,8 +26,9 @@ const HELP = `Hexmarch command line
       Start a game saved in a file. Seats named after a strategy are bots;
       any other name is an outside player who moves with "submit".
 
-  observe --file game.json [--seat 0]
-      Print what that seat can see, as JSON.
+  observe --file game.json [--seat 0] [--brief]
+      Print what that seat can see, as JSON, or with --brief as a text
+      briefing written for a language model to decide from.
 
   submit --file game.json [--seat 0] --json '{"placements":[...]}' | '{"orders":[...]}'
       Seal that seat's move for the current phase. Bots answer at once.
@@ -155,7 +157,8 @@ const commands = {
 
   observe(args) {
     const game = loadGame(args);
-    console.log(pretty(view(game, outsideSeat(game, args))));
+    const seat = outsideSeat(game, args);
+    console.log(args.brief ? briefing(observe(game.state, seat)) : pretty(view(game, seat)));
   },
 
   submit(args) {

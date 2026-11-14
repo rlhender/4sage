@@ -15,9 +15,9 @@ and anyone (a person or another model) can pick the work up from here.
 
 _Update this section at the end of every working session._
 
-- Milestones 0 and 1 are built, tested and pushed.
-- Milestones 2 to 7 are planned below and not started.
-- Next up: milestone 2.
+- Milestones 0 to 2 are built, tested and pushed.
+- Milestones 3 to 7 are planned below and not started.
+- Next up: milestone 3.
 
 ## What the owner asked for
 
@@ -88,12 +88,12 @@ So rule sets can be compared without touching code.
 
 ### 2. Briefing for AI players
 
-- [ ] MH `engine/briefing.js`: text briefing built from a view: what to do now,
+- [x] MH `engine/briefing.js`: text briefing built from a view: what to do now,
       standings, your land with every neighbour and capture odds, castle
       threats, island progress, last round
-- [ ] MH Exact reply format and limits stated in every briefing
-- [ ] SH Briefing stays under about 1,500 tokens on a full board
-- [ ] MH Tests: briefing matches the view; an agent that reads only the
+- [x] MH Exact reply format and limits stated in every briefing
+- [x] SH Briefing stays under about 1,500 tokens on a full board
+- [x] MH Tests: briefing matches the view; an agent that reads only the
       briefing can produce a legal move
 
 ### 3. HTTP API for agents
