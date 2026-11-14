@@ -49,9 +49,22 @@ function survey(obs, w) {
   const regionOf = new Map();
   for (const region of obs.regions) for (const t of region.territories) regionOf.set(t, region);
 
-  // What a territory is worth capturing.
+  // Steps from its own castle to every territory.
+  const reach = new Map([[castle, 0]]);
+  const frontier = [castle];
+  for (let i = 0; i < frontier.length; i++) {
+    for (const n of T[frontier[i]].adjacent) {
+      if (!reach.has(n)) { reach.set(n, reach.get(frontier[i]) + 1); frontier.push(n); }
+    }
+  }
+  // A tiny fixed preference that differs by seat, so that players faced with
+  // identical choices do not all pick the same territory.
+  const whim = (n) => (((n + 1) * 2654435761 + (me + 1) * 40503) >>> 0) % 997 / 1e5;
+
+  // What a territory is worth capturing. All else equal, land near home is
+  // worth more: it is easier to hold and builds a compact realm.
   const value = (n) => {
-    let v = 1;
+    let v = 1 + 0.4 / (1 + reach.get(n)) + whim(n);
     if (T[n].castleOf !== undefined) v += 3 * w.castleHunt;
     const region = regionOf.get(n);
     if (region.territories.every((t) => t === n || T[t].owner === me)) v += w.islandFocus * region.bonus;
@@ -71,11 +84,11 @@ function survey(obs, w) {
   const odds = (force, n, garrison = T[n].armies, momentum = false) =>
     captureOdds(force, garrison, obs.rules, T[n].castleOf === T[n].owner, momentum).win;
 
-  return { me, T, mine, castle, others, hostile, threat, value, worth, keep, odds };
+  return { me, T, mine, castle, others, hostile, threat, value, worth, keep, odds, whim };
 }
 
 export function choosePlacements(obs, w) {
-  const { T, mine, castle, others, threat, value, odds } = survey(obs, w);
+  const { T, mine, castle, others, threat, value, odds, whim } = survey(obs, w);
   let left = obs.income;
   const placed = new Map();
   const add = (t, n) => { if (n > 0) { placed.set(t, (placed.get(t) ?? 0) + n); left -= n; } };
@@ -87,7 +100,7 @@ export function choosePlacements(obs, w) {
     let bestScore = -1;
     for (const t of mine) {
       for (const n of others(t)) {
-        const score = value(n) * odds(T[t].armies - 1 + left, n);
+        const score = value(n) * odds(T[t].armies - 1 + left, n) + whim(t);
         if (score > bestScore) { bestScore = score; best = t; }
       }
     }

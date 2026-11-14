@@ -9,38 +9,20 @@
   "fair": [
     3,
     4,
-    7,
-    8,
-    9,
+    5,
     10,
-    12,
-    13,
-    15,
+    11,
     17,
-    19,
-    20,
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
+    23,
     31,
+    33,
     34,
-    35,
+    36,
     37,
     39,
-    40,
-    41,
-    42,
     43,
-    44,
-    45,
-    46,
-    48,
-    54,
-    55,
+    51,
+    53,
     57,
     60
   ],
@@ -48,212 +30,212 @@
     {
       "mapSeed": 1,
       "verdict": "uneven",
-      "largestDeviation": 2.062
+      "largestDeviation": 2.285
     },
     {
       "mapSeed": 2,
       "verdict": "uneven",
-      "largestDeviation": 2.726
+      "largestDeviation": 2.039
     },
     {
       "mapSeed": 3,
       "verdict": "fair",
-      "largestDeviation": 0.844
+      "largestDeviation": 1.758
     },
     {
       "mapSeed": 4,
       "verdict": "fair",
-      "largestDeviation": 1.826
+      "largestDeviation": 1.768
     },
     {
       "mapSeed": 5,
-      "verdict": "uneven",
-      "largestDeviation": 2.1
+      "verdict": "fair",
+      "largestDeviation": 1.4
     },
     {
       "mapSeed": 6,
       "verdict": "uneven",
-      "largestDeviation": 2.477
+      "largestDeviation": 2.694
     },
     {
       "mapSeed": 7,
-      "verdict": "fair",
-      "largestDeviation": 1.715
+      "verdict": "uneven",
+      "largestDeviation": 2.75
     },
     {
       "mapSeed": 8,
-      "verdict": "fair",
-      "largestDeviation": 1.99
+      "verdict": "uneven",
+      "largestDeviation": 2.083
     },
     {
       "mapSeed": 9,
-      "verdict": "fair",
-      "largestDeviation": 1.463
+      "verdict": "uneven",
+      "largestDeviation": 2.623
     },
     {
       "mapSeed": 10,
       "verdict": "fair",
-      "largestDeviation": 0.811
+      "largestDeviation": 1.992
     },
     {
       "mapSeed": 11,
-      "verdict": "skewed",
-      "largestDeviation": 3.556
+      "verdict": "fair",
+      "largestDeviation": 1.956
     },
     {
       "mapSeed": 12,
-      "verdict": "fair",
-      "largestDeviation": 1.531
+      "verdict": "uneven",
+      "largestDeviation": 2.256
     },
     {
       "mapSeed": 13,
-      "verdict": "fair",
-      "largestDeviation": 1.677
+      "verdict": "skewed",
+      "largestDeviation": 3.407
     },
     {
       "mapSeed": 14,
-      "verdict": "uneven",
-      "largestDeviation": 2.339
+      "verdict": "skewed",
+      "largestDeviation": 4.944
     },
     {
       "mapSeed": 15,
-      "verdict": "fair",
-      "largestDeviation": 1.123
+      "verdict": "skewed",
+      "largestDeviation": 3.105
     },
     {
       "mapSeed": 16,
-      "verdict": "uneven",
-      "largestDeviation": 2.062
+      "verdict": "skewed",
+      "largestDeviation": 3.06
     },
     {
       "mapSeed": 17,
       "verdict": "fair",
-      "largestDeviation": 1.806
+      "largestDeviation": 1.625
     },
     {
       "mapSeed": 18,
-      "verdict": "uneven",
-      "largestDeviation": 2.487
+      "verdict": "skewed",
+      "largestDeviation": 3.717
     },
     {
       "mapSeed": 19,
-      "verdict": "fair",
-      "largestDeviation": 1.741
+      "verdict": "uneven",
+      "largestDeviation": 2.325
     },
     {
       "mapSeed": 20,
-      "verdict": "fair",
-      "largestDeviation": 1.375
+      "verdict": "uneven",
+      "largestDeviation": 2.459
     },
     {
       "mapSeed": 21,
       "verdict": "uneven",
-      "largestDeviation": 2.135
+      "largestDeviation": 2.592
     },
     {
       "mapSeed": 22,
-      "verdict": "skewed",
-      "largestDeviation": 3.104
+      "verdict": "uneven",
+      "largestDeviation": 2.575
     },
     {
       "mapSeed": 23,
-      "verdict": "skewed",
-      "largestDeviation": 3.213
+      "verdict": "fair",
+      "largestDeviation": 1.941
     },
     {
       "mapSeed": 24,
-      "verdict": "fair",
-      "largestDeviation": 1.612
+      "verdict": "uneven",
+      "largestDeviation": 2.031
     },
     {
       "mapSeed": 25,
-      "verdict": "fair",
-      "largestDeviation": 0.546
+      "verdict": "uneven",
+      "largestDeviation": 2.104
     },
     {
       "mapSeed": 26,
-      "verdict": "fair",
-      "largestDeviation": 1.663
+      "verdict": "skewed",
+      "largestDeviation": 4.058
     },
     {
       "mapSeed": 27,
-      "verdict": "fair",
-      "largestDeviation": 1.606
+      "verdict": "uneven",
+      "largestDeviation": 2.437
     },
     {
       "mapSeed": 28,
-      "verdict": "fair",
-      "largestDeviation": 1.055
+      "verdict": "uneven",
+      "largestDeviation": 2.219
     },
     {
       "mapSeed": 29,
-      "verdict": "fair",
-      "largestDeviation": 1.993
+      "verdict": "uneven",
+      "largestDeviation": 2.539
     },
     {
       "mapSeed": 30,
-      "verdict": "fair",
-      "largestDeviation": 1.945
+      "verdict": "skewed",
+      "largestDeviation": 3.082
     },
     {
       "mapSeed": 31,
       "verdict": "fair",
-      "largestDeviation": 1.405
+      "largestDeviation": 1.65
     },
     {
       "mapSeed": 32,
       "verdict": "uneven",
-      "largestDeviation": 2.029
+      "largestDeviation": 2.063
     },
     {
       "mapSeed": 33,
-      "verdict": "uneven",
-      "largestDeviation": 2.54
+      "verdict": "fair",
+      "largestDeviation": 1.712
     },
     {
       "mapSeed": 34,
       "verdict": "fair",
-      "largestDeviation": 1.639
+      "largestDeviation": 1.18
     },
     {
       "mapSeed": 35,
-      "verdict": "fair",
-      "largestDeviation": 1.754
+      "verdict": "uneven",
+      "largestDeviation": 2.1
     },
     {
       "mapSeed": 36,
-      "verdict": "uneven",
-      "largestDeviation": 2.12
+      "verdict": "fair",
+      "largestDeviation": 1.95
     },
     {
       "mapSeed": 37,
       "verdict": "fair",
-      "largestDeviation": 1.409
+      "largestDeviation": 1.225
     },
     {
       "mapSeed": 38,
       "verdict": "uneven",
-      "largestDeviation": 2.888
+      "largestDeviation": 2.405
     },
     {
       "mapSeed": 39,
       "verdict": "fair",
-      "largestDeviation": 1.253
+      "largestDeviation": 1.8
     },
     {
       "mapSeed": 40,
-      "verdict": "fair",
-      "largestDeviation": 1.701
+      "verdict": "skewed",
+      "largestDeviation": 3.226
     },
     {
       "mapSeed": 41,
-      "verdict": "fair",
-      "largestDeviation": 1.606
+      "verdict": "uneven",
+      "largestDeviation": 2.548
     },
     {
       "mapSeed": 42,
-      "verdict": "fair",
-      "largestDeviation": 1.333
+      "verdict": "uneven",
+      "largestDeviation": 2.909
     },
     {
       "mapSeed": 43,
@@ -262,33 +244,33 @@
     },
     {
       "mapSeed": 44,
-      "verdict": "fair",
-      "largestDeviation": 1.814
+      "verdict": "uneven",
+      "largestDeviation": 2.935
     },
     {
       "mapSeed": 45,
-      "verdict": "fair",
-      "largestDeviation": 1.577
+      "verdict": "skewed",
+      "largestDeviation": 3.536
     },
     {
       "mapSeed": 46,
-      "verdict": "fair",
-      "largestDeviation": 1.364
+      "verdict": "uneven",
+      "largestDeviation": 2.402
     },
     {
       "mapSeed": 47,
       "verdict": "uneven",
-      "largestDeviation": 2.449
+      "largestDeviation": 2.176
     },
     {
       "mapSeed": 48,
-      "verdict": "fair",
-      "largestDeviation": 1.835
+      "verdict": "skewed",
+      "largestDeviation": 3.04
     },
     {
       "mapSeed": 49,
-      "verdict": "uneven",
-      "largestDeviation": 2.192
+      "verdict": "skewed",
+      "largestDeviation": 3.1
     },
     {
       "mapSeed": 50,
@@ -297,53 +279,53 @@
     },
     {
       "mapSeed": 51,
-      "verdict": "uneven",
-      "largestDeviation": 2.359
+      "verdict": "fair",
+      "largestDeviation": 1.411
     },
     {
       "mapSeed": 52,
-      "verdict": "uneven",
-      "largestDeviation": 2.35
+      "verdict": "skewed",
+      "largestDeviation": 3.713
     },
     {
       "mapSeed": 53,
-      "verdict": "uneven",
-      "largestDeviation": 2.122
+      "verdict": "fair",
+      "largestDeviation": 1.45
     },
     {
       "mapSeed": 54,
-      "verdict": "fair",
-      "largestDeviation": 1.251
+      "verdict": "uneven",
+      "largestDeviation": 2.54
     },
     {
       "mapSeed": 55,
-      "verdict": "fair",
-      "largestDeviation": 1.769
+      "verdict": "uneven",
+      "largestDeviation": 2.043
     },
     {
       "mapSeed": 56,
       "verdict": "uneven",
-      "largestDeviation": 2.412
+      "largestDeviation": 2.734
     },
     {
       "mapSeed": 57,
       "verdict": "fair",
-      "largestDeviation": 1.015
+      "largestDeviation": 1.333
     },
     {
       "mapSeed": 58,
-      "verdict": "skewed",
-      "largestDeviation": 3.151
+      "verdict": "uneven",
+      "largestDeviation": 2.023
     },
     {
       "mapSeed": 59,
       "verdict": "uneven",
-      "largestDeviation": 2.466
+      "largestDeviation": 2.921
     },
     {
       "mapSeed": 60,
       "verdict": "fair",
-      "largestDeviation": 1.409
+      "largestDeviation": 1.611
     }
   ]
 }

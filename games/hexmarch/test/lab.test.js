@@ -31,6 +31,8 @@ test('map evaluation accounts for every start and describes the map', () => {
   assert.equal(result.structure.regions.length, 6);
   assert.ok(result.structure.seaLanes >= 5, 'the islands are connected');
   assert.equal(result.largestDeviation, Math.max(...result.islands.map((i) => Math.abs(i.z))));
+  assert.ok(result.largestGap >= 0 && result.largestGap <= 1);
+  assert.equal(result.verdict === 'fair', result.largestGap <= 0.08);
 });
 
 test('the lab runs from the command line', () => {

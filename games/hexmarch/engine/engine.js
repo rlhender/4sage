@@ -15,6 +15,8 @@ export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 6;
 
 const START_ARMIES = { 2: 36, 3: 31, 4: 26, 5: 22, 6: 18 };
+// Which islands of the six-island ring hold castles, by number of players.
+const CASTLE_SPACING = { 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 3, 4], 6: [0, 1, 2, 3, 4, 5] };
 
 // A map is fully described by its seed and the map-shaping rules.
 const maps = new Map();
@@ -110,8 +112,19 @@ export function createGame({ players, seed = 1, mapSeed = seed, rules: overrides
     result: null,
   };
 
-  // Castles go as far apart as the map allows.
-  const castles = [randInt(state, total)];
+  // Castles are spread evenly round the ring of islands, one to an island,
+  // so that no seat starts nearer its rivals than another has to. Without a
+  // ring they simply go as far apart as the map allows.
+  const castles = [];
+  if (map.ring) {
+    const turn = randInt(state, map.ring.length);
+    for (const step of CASTLE_SPACING[count]) {
+      const island = map.regions[map.ring[(step + turn) % map.ring.length]].territories;
+      const inland = island.filter((t) => map.territories[t].adj.every((n) => island.includes(n)));
+      const sites = inland.length ? inland : island;
+      castles.push(sites[randInt(state, sites.length)]);
+    }
+  } else castles.push(randInt(state, total));
   while (castles.length < count) {
     const dists = castles.map((c) => distancesFrom(map, c));
     let best = -1;
@@ -128,13 +141,63 @@ export function createGame({ players, seed = 1, mapSeed = seed, rules: overrides
     state.armies[castles[i]] = rules.castleGarrison;
   });
 
-  // Everything else is dealt out, then spare armies land at random.
+  // Everything else is dealt out, then spare armies land at random. A small
+  // game is dealt as if more were playing; the empty seats' land is neutral.
+  const homeIslands = rules.startingLand === 'island' && map.ring;
+  if (homeIslands) {
+    // Each player holds the island their castle stands on; the rest is neutral.
+    state.owner.forEach((_, t) => {
+      const lord = state.players.findIndex((p) => map.territories[p.castle].region === map.territories[t].region);
+      state.owner[t] = lord;
+      if (lord === NEUTRAL) state.armies[t] = rules.neutralGarrison;
+    });
+  }
+  // Otherwise every player gets an equal share including their castle. What
+  // is left over goes round the players when all seats are taken, and is
+  // neutral otherwise.
+  const shares = homeIslands ? MAX_PLAYERS : Math.max(count, rules.minSeats);
+  const each = Math.floor(total / shares);
+  // With a core, the land round each castle starts in its owner's hands, so
+  // nobody begins the game next door to an enemy castle.
+  const core = new Map();
+  if (rules.startingLand === 'core') {
+    state.players.forEach((p, seat) => {
+      for (const n of map.territories[p.castle].adj.slice(0, each - 1)) {
+        if (!castles.includes(n) && !core.has(n)) core.set(n, seat);
+      }
+    });
+    for (const [t, seat] of core) state.owner[t] = seat;
+  }
+  const held = (seat) => [...core.values()].filter((s) => s === seat).length;
+  const deal = [];
+  for (let seat = 0; seat < count; seat++) for (let i = 1 + held(seat); i < each; i++) deal.push(seat);
   const offset = randInt(state, count);
-  shuffle(state, [...Array(total).keys()].filter((t) => !castles.includes(t)))
-    .forEach((t, i) => { state.owner[t] = (i + offset) % count; });
+  shuffle(state, homeIslands ? [] : [...Array(total).keys()].filter((t) => !castles.includes(t) && !core.has(t))).forEach((t, i) => {
+    const extra = shares === count ? (i - deal.length + offset) % count : NEUTRAL;
+    state.owner[t] = i < deal.length ? deal[i] : extra;
+    if (state.owner[t] === NEUTRAL) state.armies[t] = rules.neutralGarrison;
+  });
+  if (rules.startingLand === 'buffered') {
+    // Nobody starts next door to an enemy castle: such a territory changes
+    // hands with one of the castle owner's, or with a neutral one.
+    const guarded = (t, seat) => state.players.some((p, s) => s !== seat && map.territories[p.castle].adj.includes(t));
+    state.players.forEach((p, lord) => {
+      for (const t of map.territories[p.castle].adj) {
+        const intruder = state.owner[t];
+        if (intruder === lord || intruder === NEUTRAL) continue;
+        const free = (owner) => shuffle(state, state.owner.flatMap((o, u) =>
+          (o === owner && !castles.includes(u) && !guarded(u, intruder) && !map.territories[p.castle].adj.includes(u) ? [u] : [])));
+        const swap = free(lord)[0] ?? free(NEUTRAL)[0];
+        if (swap === undefined) continue;
+        state.owner[t] = state.owner[swap];
+        state.owner[swap] = intruder;
+      }
+    });
+    state.owner.forEach((o, t) => { state.armies[t] = o === NEUTRAL ? rules.neutralGarrison : state.armies[t] === rules.neutralGarrison && !castles.includes(t) ? 1 : state.armies[t]; });
+  }
   for (let seat = 0; seat < count; seat++) {
     const mine = state.owner.flatMap((o, t) => (o === seat ? [t] : []));
-    for (let spare = START_ARMIES[count] - rules.castleGarrison - (mine.length - 1); spare > 0; spare--) {
+    for (let spare = START_ARMIES[shares] - rules.castleGarrison - (mine.length - 1); spare > 0; spare--) {
       state.armies[mine[randInt(state, mine.length)]]++;
     }
   }

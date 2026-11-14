@@ -43,7 +43,7 @@ const HELP = `Hexmarch command line
   odds <attackers> <defenders> [--clash]
       Exact odds of a fight to the death.
 
-  lab maps --seeds 1-30 | --random 30 [--games 300] [--players 3] [--strategy balanced] [--save]
+  lab maps --seeds 1-30 | --random 30 [--games 300] [--players 3,4] [--strategy balanced] [--save]
       Judge maps: identical players on each map, win rate by starting island.
       --save writes the fair ones to balance/maps.json, which the server uses.
 
@@ -180,27 +180,37 @@ function seedList(args) {
 
 const lab = {
   maps(args) {
-    const options = { games: number(args.games, 300), players: number(args.players, 3), strategy: args.strategy ?? 'balanced', rules: rulesFrom(args), seed: number(args.seed, 1) };
-    const results = evaluateMaps({ seeds: seedList(args), ...options, onMap: (r) => process.stderr.write(`map ${r.mapSeed}: ${r.verdict}\n`) });
+    // Several table sizes can be judged at once (--players 3,4); a map then
+    // gets its worst verdict and largest gap across them.
+    const tables = String(args.players ?? 3).split(',').map(Number);
+    const options = { games: number(args.games, 300), strategy: args.strategy ?? 'balanced', rules: rulesFrom(args), seed: number(args.seed, 1) };
+    const rank = ['fair', 'uneven', 'skewed'];
+    const runs = tables.map((players) => evaluateMaps({ seeds: seedList(args), ...options, players, onMap: (r) => process.stderr.write(`map ${r.mapSeed}, ${players} players: ${r.verdict}\n`) }));
+    const results = runs[0].map((first, i) => {
+      const all = runs.map((run) => run[i]);
+      const worstRun = all.reduce((a, b) => (b.largestGap / b.evenShare > a.largestGap / a.evenShare ? b : a));
+      return { ...worstRun, verdict: rank[Math.max(...all.map((r) => rank.indexOf(r.verdict)))] };
+    });
+    options.players = tables;
     if (args.save) {
       const fair = results.filter((r) => r.verdict === 'fair').map((r) => r.mapSeed);
       mkdirSync(path.dirname(MAPS_FILE), { recursive: true });
-      writeFileSync(MAPS_FILE, `${JSON.stringify({ settings: options, fair, judged: results.map((r) => ({ mapSeed: r.mapSeed, verdict: r.verdict, largestDeviation: r.largestDeviation })) }, null, 2)}\n`);
+      writeFileSync(MAPS_FILE, `${JSON.stringify({ settings: options, fair, judged: results.map((r) => ({ mapSeed: r.mapSeed, verdict: r.verdict, largestGap: r.largestGap })) }, null, 2)}\n`);
     }
     if (args.json) { console.log(JSON.stringify(results)); return; }
     const best = (r) => r.islands.reduce((a, b) => (b.winRate > a.winRate ? b : a));
     const worst = (r) => r.islands.reduce((a, b) => (b.winRate < a.winRate ? b : a));
     console.log(table([
-      ['map', 'verdict', 'deviation', 'best start', 'worst start', 'rounds', 'blowouts', 'stalemates'],
-      ...[...results].sort((a, b) => a.largestDeviation - b.largestDeviation).map((r) => [
-        r.mapSeed, r.verdict, r.largestDeviation.toFixed(1),
+      ['map', 'verdict', 'gap', 'best start', 'worst start', 'rounds', 'blowouts', 'stalemates'],
+      ...[...results].sort((a, b) => a.largestGap - b.largestGap).map((r) => [
+        r.mapSeed, r.verdict, `${Math.round(r.largestGap * 100)} pts`,
         `${best(r).island} ${pct(best(r).winRate)}`, `${worst(r).island} ${pct(worst(r).winRate)}`,
         r.metrics.averageRounds.toFixed(1), pct(r.metrics.blowoutRate), pct(r.metrics.stalemateRate),
       ]),
     ]));
     const count = (v) => results.filter((r) => r.verdict === v).length;
-    console.log(`\n${results.length} maps, ${options.players} identical ${options.strategy} players, ${options.games} games each. An even share is ${pct(results[0].evenShare)}.`);
-    console.log(`fair ${count('fair')}, uneven ${count('uneven')}, skewed ${count('skewed')}. Deviation is the largest gap between a starting island's win rate and an even share, in standard errors: under 2 is fair, 3 or more is skewed.`);
+    console.log(`\n${results.length} maps, identical ${options.strategy} players at tables of ${tables.join(' and ')}, ${options.games} games each. Each row shows the table size where the map did worst.`);
+    console.log(`fair ${count('fair')}, uneven ${count('uneven')}, skewed ${count('skewed')}. Gap is how far the best or worst starting island's win rate is from an even share: up to 8 points is fair, 15 or more is skewed.`);
     if (args.save) console.log(`Saved the fair maps to ${path.relative(process.cwd(), MAPS_FILE)}.`);
   },
 

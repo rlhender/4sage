@@ -1,89 +1,99 @@
 {
   "weights": {
-    "aggression": 0.69,
-    "castleGuard": 1.7,
-    "reserve": 0.11,
-    "commit": 0.89,
-    "castleHunt": 3,
-    "islandFocus": 2.28,
-    "foresight": 0.54,
-    "counter": 0.18
+    "aggression": 0.8,
+    "castleGuard": 1.24,
+    "reserve": 0,
+    "commit": 0.95,
+    "castleHunt": 1.97,
+    "islandFocus": 2.16,
+    "foresight": 0.82,
+    "counter": 0.79
   },
   "history": [
     {
       "generation": 1,
-      "winRate": 0.5555555555555556,
-      "championBefore": 0.5333333333333333
+      "winRate": 0.6,
+      "championBefore": 0.5666666666666667
     },
     {
       "generation": 2,
-      "winRate": 0.6,
-      "championBefore": 0.5555555555555556
-    },
-    {
-      "generation": 3,
-      "winRate": 0.5333333333333333,
-      "championBefore": 0.5333333333333333
-    },
-    {
-      "generation": 4,
-      "winRate": 0.5444444444444444,
-      "championBefore": 0.5
-    },
-    {
-      "generation": 5,
-      "winRate": 0.4888888888888889,
-      "championBefore": 0.4222222222222222
-    },
-    {
-      "generation": 6,
       "winRate": 0.5777777777777777,
       "championBefore": 0.4666666666666667
     },
     {
-      "generation": 7,
-      "winRate": 0.6111111111111112,
+      "generation": 3,
+      "winRate": 0.4777777777777778,
       "championBefore": 0.4777777777777778
     },
     {
-      "generation": 8,
+      "generation": 4,
+      "winRate": 0.5111111111111111,
+      "championBefore": 0.4444444444444444
+    },
+    {
+      "generation": 5,
       "winRate": 0.6,
-      "championBefore": 0.6
+      "championBefore": 0.5555555555555556
+    },
+    {
+      "generation": 6,
+      "winRate": 0.45555555555555555,
+      "championBefore": 0.45555555555555555
+    },
+    {
+      "generation": 7,
+      "winRate": 0.5666666666666667,
+      "championBefore": 0.5222222222222223
+    },
+    {
+      "generation": 8,
+      "winRate": 0.5888888888888889,
+      "championBefore": 0.5444444444444444
     },
     {
       "generation": 9,
-      "winRate": 0.5666666666666667,
-      "championBefore": 0.4888888888888889
+      "winRate": 0.6222222222222222,
+      "championBefore": 0.6222222222222222
     },
     {
       "generation": 10,
       "winRate": 0.5888888888888889,
-      "championBefore": 0.5555555555555556
+      "championBefore": 0.5888888888888889
     },
     {
       "generation": 11,
-      "winRate": 0.6,
-      "championBefore": 0.4888888888888889
+      "winRate": 0.5666666666666667,
+      "championBefore": 0.5
     },
     {
       "generation": 12,
-      "winRate": 0.5555555555555556,
-      "championBefore": 0.5555555555555556
+      "winRate": 0.5888888888888889,
+      "championBefore": 0.5444444444444444
     },
     {
       "generation": 13,
-      "winRate": 0.6333333333333333,
-      "championBefore": 0.5555555555555556
+      "winRate": 0.4666666666666667,
+      "championBefore": 0.43333333333333335
     },
     {
       "generation": 14,
+      "winRate": 0.5444444444444444,
+      "championBefore": 0.4666666666666667
+    },
+    {
+      "generation": 15,
       "winRate": 0.5,
-      "championBefore": 0.4777777777777778
+      "championBefore": 0.4444444444444444
+    },
+    {
+      "generation": 16,
+      "winRate": 0.5,
+      "championBefore": 0.4222222222222222
     }
   ],
-  "generations": 14,
+  "generations": 16,
   "games": 90,
-  "seed": 41,
+  "seed": 61,
   "rivals": [
     "aggressive",
     "fortress",

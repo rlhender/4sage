@@ -70,13 +70,13 @@ const LAYOUTS = { corners: [0, 1, 2, 3, 4, 5], centre: [1, 0, 2, 3, 5, 4] };
 const RING = [0, 1, 2, 5, 4, 3];
 
 // Identifies a map shape; two maps with the same seed and key are identical.
-export const shapeKey = (shape = {}) => `${shape.smallIslands ?? 'centre'}:${shape.islandSizes ?? 'varied'}:${shape.seaLanes ?? 'ring'}`;
+export const shapeKey = (shape = {}) => `${shape.smallIslands ?? 'centre'}:${shape.islandSizes ?? 'equal'}:${shape.seaLanes ?? 'ring'}`;
 
 export function generateMap(seed, shape = {}) {
   const layout = LAYOUTS[shape.smallIslands] ?? LAYOUTS.centre;
   const spot = (ri) => REGION_DEFS[layout[ri]];
   // Islands of 5, 6 and 7 territories, or six of each when sizes are equal.
-  const size = (ri) => (shape.islandSizes === 'equal' ? 6 : REGION_DEFS[ri].count);
+  const size = (ri) => (shape.islandSizes === 'varied' ? REGION_DEFS[ri].count : 6);
   const rand = rng32(seed);
   const rint = (a, b) => a + Math.floor(rand() * (b - a + 1));
 
@@ -201,11 +201,30 @@ export function generateMap(seed, shape = {}) {
     }
   } else {
     // A ring: every island is joined to the next one round the edge of the
-    // map, so each has exactly two ways in.
+    // map, so each has exactly two ways in. The two landings on an island
+    // are kept apart where the shape allows, so that no island can hold both
+    // of its doors with a single army.
     const at = (position) => layout.indexOf(position);
+    const landings = islands.map(() => []);
+    const apart = (island, cell) => landings[island].every((t) => t !== terrOf[cell] && !adj[t].has(terrOf[cell]));
+    const distinct = (island, cell) => !landings[island].includes(terrOf[cell]);
     RING.forEach((position, k) => {
       const [a, b] = [at(position), at(RING[(k + 1) % RING.length])].sort((x, y) => x - y);
-      addLane(crossings.find((c) => c.a === a && c.b === b));
+      let best = null;
+      for (const ok of [apart, distinct, () => true]) {
+        for (const i of islands[a].cells) {
+          if (!ok(a, i)) continue;
+          for (const j of islands[b].cells) {
+            if (!ok(b, j)) continue;
+            const d = dist(i, j);
+            if (!best || d < best.d) best = { a, b, i, j, d };
+          }
+        }
+        if (best) break;
+      }
+      addLane(best);
+      landings[a].push(terrOf[best.i]);
+      landings[b].push(terrOf[best.j]);
     });
   }
 
@@ -247,5 +266,7 @@ export function generateMap(seed, shape = {}) {
     territories: territories.filter((t) => t.region === ri).map((t) => t.id),
   }));
 
-  return { seed, layout: shapeKey(shape), territories, regions, lanes };
+  // The islands in order round the ring, when they are joined that way.
+  const ring = shape.seaLanes === 'nearest' ? null : RING.map((position) => layout.indexOf(position));
+  return { seed, layout: shapeKey(shape), territories, regions, lanes, ring };
 }

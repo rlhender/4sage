@@ -19,6 +19,11 @@ export const CRITERIA = {
   turtleRate: { max: 0.30, doc: 'Win rate of the passive strategy; high means sitting still pays.' },
 };
 
+// A map is fair if no starting island wins more than this far from an even
+// share, and skewed beyond the second figure.
+export const FAIR_GAP = 0.08;
+export const SKEWED_GAP = 0.15;
+
 const leaderOf = (state) => {
   const counts = state.players.map((p, seat) => (p.alive ? state.owner.filter((o) => o === seat).length : -1));
   const top = Math.max(...counts);
@@ -158,13 +163,17 @@ export function evaluateMap({ mapSeed, games = 300, players = 3, strategy = 'bal
     z: round3((s.wins - s.starts * share) / Math.sqrt(s.starts * share * (1 - share))),
   }));
   const worst = Math.max(0, ...islands.map((s) => Math.abs(s.z)));
+  // The verdict goes by size of effect: how many points the best or worst
+  // start is from an even share.
+  const gap = round3(Math.max(0, ...islands.map((s) => Math.abs(s.winRate - share))));
   const metrics = summarise(played);
   const checks = health(metrics);
-  const verdict = worst >= 3 ? 'skewed' : worst >= 2 ? 'uneven' : 'fair';
+  const verdict = gap >= SKEWED_GAP ? 'skewed' : gap > FAIR_GAP ? 'uneven' : 'fair';
   return {
     mapSeed, players, strategy, games,
     verdict,
     evenShare: round3(share),
+    largestGap: gap,
     largestDeviation: worst,
     islands,
     metrics,

@@ -16,9 +16,12 @@ const names = (n) => Array.from({ length: n }, (_, i) => `P${i + 1}`);
 function duel(armiesA, armiesB, seed = 3) {
   const state = createGame({ players: names(2), seed });
   const map = getMap(seed);
-  const a = map.territories.find((t) => t.adj.length >= 2).id;
+  // a borders b and c; c also borders d, which is not next to a.
+  const beyond = (t) => map.territories[t.adj[1]].adj.find((n) => n !== t.id && n !== t.adj[0] && !t.adj.includes(n));
+  const a = map.territories.find((t) => t.adj.length >= 2 && beyond(t) !== undefined).id;
   const [b, c] = map.territories[a].adj;
-  const spare = map.territories.map((t) => t.id).filter((t) => ![a, b, c].includes(t) && !map.territories[a].adj.includes(t));
+  const d = beyond(map.territories[a]);
+  const spare = map.territories.map((t) => t.id).filter((t) => ![a, b, c, d].includes(t) && !map.territories[a].adj.includes(t));
   state.owner.fill(NEUTRAL);
   state.armies.fill(1);
   state.owner[a] = 0;
@@ -32,7 +35,7 @@ function duel(armiesA, armiesB, seed = 3) {
   state.armies[spare[0]] = 9;
   state.armies[spare[1]] = 9;
   state.phase = 'orders';
-  return { state, map, a, b, c, castles: [spare[0], spare[1]] };
+  return { state, map, a, b, c, d, castles: [spare[0], spare[1]] };
 }
 
 const events = (state) => state.history.findLast((h) => h.events).events;
@@ -55,9 +58,22 @@ test('maps are deterministic, fully assigned and connected', () => {
   }
 });
 
-test('a new game gives every player a castle and the right armies', () => {
-  for (const [count, armies] of [[2, 36], [3, 31], [4, 26], [5, 22], [6, 18]]) {
+test('every player starts with a castle and five territories; the rest is neutral', () => {
+  for (const count of [2, 3, 4, 5, 6]) {
     const state = createGame({ players: names(count), seed: 11 + count });
+    assert.equal(state.owner.filter((o) => o === NEUTRAL).length, 36 - 6 * count);
+    assert.ok(state.armies.every((n, t) => state.owner[t] !== NEUTRAL || n === 2), 'neutral land has its garrison');
+    state.players.forEach((p, seat) => {
+      assert.equal(state.owner.filter((o) => o === seat).length, 6);
+      assert.ok(state.armies[p.castle] >= 8);
+      assert.equal(state.armies.reduce((sum, n, t) => sum + (state.owner[t] === seat ? n : 0), 0), 18);
+    });
+  }
+});
+
+test('with minSeats off the whole map is dealt out', () => {
+  for (const [count, armies] of [[2, 36], [3, 31], [4, 26], [5, 22], [6, 18]]) {
+    const state = createGame({ players: names(count), seed: 11 + count, rules: { minSeats: 2 } });
     assert.equal(state.phase, 'place');
     assert.ok(state.owner.every((o) => o >= 0 && o < count));
     const castles = state.players.map((p) => p.castle);
@@ -144,10 +160,8 @@ test('forces attacking each other clash on the border before either reaches land
 });
 
 test('when two players attack one territory the larger force goes first', () => {
-  const { state, a, b, c } = duel(30, 50);
+  const { state, a, c, d } = duel(30, 50);
   // c is neutral with 1 army, bordering a (seat 0). Give seat 1 a border with c too.
-  const map = getMap(state.config.mapSeed);
-  const d = map.territories[c].adj.find((t) => t !== a && t !== b && state.owner[t] === NEUTRAL);
   state.owner[d] = 1;
   state.armies[d] = 50;
   seal(state, 0, [{ from: a, to: c, armies: 10 }]);
@@ -350,7 +364,7 @@ test('dice rules change the odds, and the engine fights by them', () => {
 });
 
 test('fallen land can pass to the captor, and the smaller force can fight first', () => {
-  const state = createGame({ players: names(3), seed: 9, rules: { fallenLand: 'captor' } });
+  const state = createGame({ players: names(3), seed: 9, rules: { fallenLand: 'captor', minSeats: 2 } });
   const castle = state.players[2].castle;
   const next = getMap(9).territories[castle].adj[0];
   const theirs = state.owner.filter((o) => o === 2).length - (state.owner[next] === 2 ? 1 : 0);
@@ -365,9 +379,8 @@ test('fallen land can pass to the captor, and the smaller force can fight first'
   assert.ok(!state.owner.includes(NEUTRAL));
   assert.equal(state.owner.filter((o) => o === 0).length, mine + theirs);
 
-  const { state: duelState, a, b, c } = duel(30, 50);
+  const { state: duelState, a, c, d } = duel(30, 50);
   duelState.config.rules = resolveRules({ multiAttack: 'smallestFirst' });
-  const d = getMap(3).territories[c].adj.find((t) => t !== a && t !== b && duelState.owner[t] === NEUTRAL);
   duelState.owner[d] = 1;
   duelState.armies[d] = 50;
   seal(duelState, 0, [{ from: a, to: c, armies: 10 }]);
