@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hexmarch</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Hexmarch</h1>
+    <div class="top-right">
+      <span id="conn" class="conn" hidden>Reconnecting…</span>
+      <button id="roomTag" class="room-tag" hidden title="Copy invite link"></button>
+      <button id="leave" class="ghost" hidden>Leave</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="home" class="card narrow">
+      <p class="lede">Conquer a shattered archipelago. Two to six players, a new map every game.</p>
+      <label for="name">Your name</label>
+      <input id="name" maxlength="20" autocomplete="nickname" placeholder="Commander">
+      <button id="create" class="primary">Create a room</button>
+      <div class="divider"><span>or join one</span></div>
+      <label for="code">Room code</label>
+      <div class="row">
+        <input id="code" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="ABCD">
+        <button id="join">Join</button>
+      </div>
+    </section>
+
+    <section id="lobby" class="card narrow" hidden>
+      <h2>Room <span id="lobbyCode"></span></h2>
+      <p class="hint">Share the code or the invite link, then start when everyone is in.</p>
+      <ul id="lobbyPlayers" class="players"></ul>
+      <div id="lobbyActions" class="row wrap"></div>
+    </section>
+
+    <section id="game" hidden>
+      <div class="map-col">
+        <div id="status" class="status"></div>
+        <div class="map-wrap"><svg id="map" role="img" aria-label="Game map"></svg></div>
+        <div id="actions" class="actions"></div>
+      </div>
+      <aside class="side">
+        <div id="dice" class="panel" hidden></div>
+        <div class="panel"><h3>Players</h3><ul id="players" class="players"></ul></div>
+        <div class="panel"><h3>Your cards</h3><div id="cards" class="cards"></div></div>
+        <div class="panel"><h3>Regions</h3><ul id="regions" class="regions"></ul></div>
+        <div class="panel"><h3>Log</h3><ol id="log" class="log"></ol></div>
+      </aside>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "hexmarch",
+  "version": "0.1.0",
+  "description": "Online multiplayer territory-conquest game on a generated hex archipelago",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
