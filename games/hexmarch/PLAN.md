@@ -15,9 +15,10 @@ and anyone (a person or another model) can pick the work up from here.
 
 _Update this section at the end of every working session._
 
-- Milestones 0 to 4 are built, tested and pushed, plus saving games to disk (part of 5).
-- Still to do: the deployment kit (5), the balance lab (6), and the agent kit's skill file (7).
-- Next up: finish milestone 5.
+- Milestones 0 to 5 are built, tested and pushed.
+- The deployment files are checked only as far as a clean production install, start and full game on Linux; nobody has yet run them on a real VPS.
+- Still to do: the balance lab (6) and the agent kit's skill file (7).
+- Next up: milestone 6.
 
 ## What the owner asked for
 
@@ -118,9 +119,9 @@ So rule sets can be compared without touching code.
 
 - [x] MH Rooms saved to `DATA_DIR` on change and restored at start
 - [x] SH Finished games written as records for later analysis
-- [ ] MH `deploy/`: systemd unit, reverse-proxy example with TLS and WebSocket
+- [x] MH `deploy/`: systemd unit, reverse-proxy example with TLS and WebSocket
       upgrade, environment file, step-by-step guide
-- [ ] MH Clean-clone check: `npm ci --omit=dev && npm start` serves the game
+- [x] MH Clean-clone check: `npm ci --omit=dev && npm start` serves the game
 - [ ] MH Owner: deploy to the VPS and play a game (see `deploy/README.md`)
 
 ### 6. Balance lab

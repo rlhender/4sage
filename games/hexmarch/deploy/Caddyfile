@@ -1,0 +1,7 @@
+# Caddy obtains and renews the TLS certificate by itself, and passes
+# WebSocket and long-polling requests through without extra settings.
+# Replace the name with your own domain, which must point at this server.
+
+hexmarch.example.com {
+	reverse_proxy 127.0.0.1:3000
+}

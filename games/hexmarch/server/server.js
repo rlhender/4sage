@@ -163,11 +163,11 @@ export async function startServer(port = 3000, options = {}) {
     server.closeAllConnections();
   });
   server.hub = hub;
-  return new Promise((resolve) => server.listen(port, () => resolve(server)));
+  return new Promise((resolve) => server.listen(port, options.host, () => resolve(server)));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const server = await startServer(env('PORT', 3000), { dataDir: process.env.DATA_DIR });
+  const server = await startServer(env('PORT', 3000), { dataDir: process.env.DATA_DIR, host: process.env.HOST });
   const { port } = server.address();
   console.log(`Hexmarch is running on http://localhost:${port}`);
   console.log(`  browser game  http://localhost:${port}/`);

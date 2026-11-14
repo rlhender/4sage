@@ -1,0 +1,23 @@
+[Unit]
+Description=Hexmarch game server
+After=network.target
+
+[Service]
+Type=simple
+User=hexmarch
+Group=hexmarch
+WorkingDirectory=/opt/hexmarch/games/hexmarch
+EnvironmentFile=/etc/hexmarch.env
+ExecStart=/usr/bin/node server/server.js
+Restart=on-failure
+RestartSec=2
+
+# The server only needs to read its code and write its data directory.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/hexmarch
+
+[Install]
+WantedBy=multi-user.target
