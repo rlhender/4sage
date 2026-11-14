@@ -163,14 +163,13 @@ So rule sets can be compared without touching code.
 - [x] MH New standard rules chosen from lab comparisons; strategy re-tuned
 - [x] MH Fair-map list rebuilt (36 of 60 maps); the server deals from it
 - [x] MH `BALANCE.md` rewritten around what was found and changed
+- [x] SH Round playback in the GUI: everyone's orders revealed, then each
+      clash, battle and move shown in turn
 
 ## Later
 
 In rough order of value. None of these is started.
 
-- [ ] SH Round playback in the GUI: reveal everyone's orders, then show
-      clashes and battles one at a time. The reveal is the dramatic moment
-      of a simultaneous game and today it is a list of text
 - [ ] SH Try `castleDefence=1` with strategies re-tuned for it; it gives the
       most comebacks of any variant measured
 - [ ] SH Measure at two, five and six players; only three and four so far

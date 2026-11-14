@@ -115,6 +115,8 @@ next champion.
 
 ## Server behaviour
 
+- When a round resolves, the browser plays it back: everyone's orders are
+  revealed, then each clash, battle and move is shown in turn.
 - Each phase has a time limit (three minutes by default; the host can
   change it per room). When it runs out the server seals a move for anyone
   who has not.

@@ -74,9 +74,10 @@ function onMessage(msg) {
     store.set(SESSION_KEY, session);
     history.replaceState(null, '', `?room=${msg.code}`);
   } else if (msg.t === 'room') {
+    const before = room?.game;
     room = msg;
     deadline = msg.msLeft == null ? null : Date.now() + msg.msLeft;
-    render();
+    if (!startPlayback(before, msg.game)) render();
   } else if (msg.t === 'error') {
     if (msg.code === 'norejoin') goHome();
     toast(msg.message);
@@ -226,7 +227,8 @@ function buildMap(game) {
   }
 }
 
-function drawArrows(orders, g) {
+// Each order is { from, to, armies, color?, move? }.
+function drawArrows(orders) {
   arrowLayer.replaceChildren();
   for (const o of orders) {
     const [x1, y1] = map.territories[o.from].label.map((v) => v * HEX);
@@ -238,16 +240,83 @@ function drawArrows(orders, g) {
     const sy = y1 + uy * 15;
     const ex = x2 - ux * 22;
     const ey = y2 - uy * 22;
-    const move = g.territories[o.to].owner === g.you;
+    const paint = o.color ? `stroke:${o.color};fill:${o.color}` : '';
     arrowLayer.append(
-      svgEl('line', { class: `arrow${move ? ' move' : ''}`, x1: sx, y1: sy, x2: ex, y2: ey }),
+      svgEl('line', { class: `arrow${o.move ? ' move' : ''}`, style: paint, x1: sx, y1: sy, x2: ex, y2: ey }),
       svgEl('path', {
-        class: 'arrow-head',
+        class: 'arrow-head', style: paint,
         d: `M${ex + ux * 8},${ey + uy * 8}L${ex - uy * 6},${ey + ux * 6}L${ex + uy * 6},${ey - ux * 6}Z`,
       }),
       svgEl('text', { class: 'arrow-n', x: (sx + ex) / 2, y: (sy + ey) / 2 }, o.armies),
     );
   }
+}
+
+// ---------- round playback ----------
+
+// When a round resolves, the server sends only the outcome. The client still
+// has the board as it stood when orders were sealed, so it can show what
+// happened in order: everyone's orders revealed, then each clash, battle and
+// move in turn, before settling on the new position.
+const playback = { active: false, round: 0, timer: null, board: null, steps: [], at: 0, arrows: [], hit: new Set(), caption: '' };
+const REVEAL_MS = 2600;
+
+function startPlayback(before, now) {
+  const last = now?.lastRound;
+  const fresh = before && before.phase === 'orders' && last && last.round === before.round
+    && before.mapSeed === now.mapSeed && last.round !== playback.round;
+  if (!fresh) return false;
+  stopPlayback();
+  const board = before.territories.map((t) => ({ owner: t.owner, armies: t.armies, castleOf: t.castleOf }));
+  const orders = last.orders.flatMap((list, seat) => (list ?? []).map((o) => ({
+    ...o, color: COLORS[seat], move: before.territories[o.to].owner === seat,
+  })));
+  const steps = [{
+    caption: orders.length ? 'Orders revealed.' : 'Nobody moved this round.',
+    arrows: orders,
+    hit: [],
+    apply() { for (const o of orders) board[o.from].armies -= o.armies; },
+  }];
+  for (const e of last.events) {
+    steps.push({
+      caption: describeEvent(e, now),
+      arrows: [],
+      hit: e.type === 'clash' ? [e.a.from, e.b.from] : e.type === 'battle' ? [e.territory] : e.type === 'move' ? [e.to] : [],
+      apply() {
+        if (e.type === 'battle') {
+          if (e.captured) board[e.territory].owner = e.attacker;
+          board[e.territory].armies = e.captured ? e.attackersLeft : e.defendersLeft;
+        } else if (e.type === 'move') {
+          board[e.to].armies += e.armies;
+        } else if (e.type === 'eliminated') {
+          board.forEach((t, id) => { if (t.owner === e.seat) t.owner = now.territories[id].owner; delete t.castleOf; });
+          now.territories.forEach((t, id) => { if (t.castleOf !== undefined) board[id].castleOf = t.castleOf; });
+        }
+      },
+    });
+  }
+  Object.assign(playback, { active: true, round: last.round, board, steps, at: -1, pace: steps.length > 14 ? 800 : 1300 });
+  stepPlayback();
+  return true;
+}
+
+function stepPlayback() {
+  if (playback.at >= 0) playback.steps[playback.at].apply();
+  playback.at++;
+  const step = playback.steps[playback.at];
+  if (!step) { stopPlayback(); render(); return; }
+  playback.caption = step.caption;
+  playback.arrows = step.arrows;
+  playback.hit = new Set(step.hit);
+  render();
+  playback.timer = setTimeout(stepPlayback, playback.at === 0 ? REVEAL_MS : playback.pace);
+}
+
+function stopPlayback() {
+  clearTimeout(playback.timer);
+  playback.active = false;
+  playback.arrows = [];
+  playback.hit = new Set();
 }
 
 // ---------- game ----------
@@ -259,14 +328,15 @@ const sum = (values) => [...values].reduce((a, b) => a + b, 0);
 const playing = (g) => !g.result && g.players[g.you].alive;
 const sealed = (g) => g.submitted !== null;
 const drafting = (g) => playing(g) && !sealed(g);
-const shownOrders = (g) => (g.phase !== 'orders' || !playing(g) ? [] : sealed(g) ? g.submitted : ui.orders);
+const shownOrders = (g) => (g.phase !== 'orders' || !playing(g) ? [] : sealed(g) ? g.submitted : ui.orders)
+  .map((o) => ({ ...o, move: g.territories[o.to].owner === g.you }));
 
 // Armies in a territory that have no draft order yet.
 const available = (g, t) => g.territories[t].armies - 1 - sum(ui.orders.filter((o) => o.from === t).map((o) => o.armies));
 
 function onTerritory(t) {
   const g = room?.game;
-  if (!g || !drafting(g)) return;
+  if (!g || !drafting(g) || playback.active) return;
   const terr = g.territories[t];
   if (g.phase === 'place') {
     const left = g.income - sum(ui.placing.values());
@@ -296,12 +366,14 @@ function syncDrafts(g) {
 }
 
 function renderMap(g) {
-  const picking = drafting(g) && g.phase === 'orders';
+  const board = playback.active ? playback.board : g.territories;
+  const picking = !playback.active && drafting(g) && g.phase === 'orders';
   const options = new Set();
   if (picking && ui.from == null) g.territories.forEach((t) => { if (t.owner === g.you && available(g, t.id) > 0) options.add(t.id); });
   if (picking && ui.from != null) g.territories[ui.from].adjacent.forEach((t) => options.add(t));
 
-  g.territories.forEach((t) => {
+  g.territories.forEach((fixed) => {
+    const t = { ...fixed, ...board[fixed.id] };
     const color = t.owner === null ? NEUTRAL_COLOR : COLORS[t.owner];
     const node = terrEls[t.id];
     node.style.fill = color;
@@ -312,17 +384,18 @@ function renderMap(g) {
     const keep = t.castleOf !== undefined ? `, ${g.players[t.castleOf].name}'s castle` : '';
     node.firstChild.textContent = `${t.name} — ${holder}, ${t.armies} armies${keep}`;
 
-    const draft = g.phase === 'place' && drafting(g) ? ui.placing.get(t.id) ?? 0 : 0;
+    const draft = !playback.active && g.phase === 'place' && drafting(g) ? ui.placing.get(t.id) ?? 0 : 0;
     const badge = badgeEls[t.id];
     badge.setAttribute('class', `badge${t.castleOf !== undefined ? ' castle' : ''}${draft ? ' boost' : ''}`);
     badge.children[1].textContent = t.armies + draft;
     badge.children[2].style.display = t.castleOf !== undefined ? '' : 'none';
 
     const edge = edgeEls[t.id];
-    edge.setAttribute('class', `edge${selected ? ' sel' : options.has(t.id) ? ' opt' : ''}`);
-    if (selected) edge.parentNode.insertBefore(edge, arrowLayer);
+    const hit = playback.hit.has(t.id);
+    edge.setAttribute('class', `edge${hit ? ' hit' : selected ? ' sel' : options.has(t.id) ? ' opt' : ''}`);
+    if (selected || hit) edge.parentNode.insertBefore(edge, arrowLayer);
   });
-  drawArrows(shownOrders(g), g);
+  drawArrows(playback.active ? playback.arrows : shownOrders(g));
 }
 
 function stepper(min, max, onChange) {
@@ -341,6 +414,15 @@ function renderActions(g) {
   const bar = $('#actions');
   const name = (t) => g.territories[t].name;
   const prompt = (text) => el('span', { class: 'prompt', text });
+
+  if (playback.active) {
+    bar.replaceChildren(
+      el('span', { class: 'prompt replay', text: playback.caption }),
+      el('span', { class: 'hint', text: `Round ${playback.round} · ${playback.at + 1} of ${playback.steps.length}` }),
+      el('button', { text: 'Skip', onclick: () => { stopPlayback(); render(); } }),
+    );
+    return;
+  }
 
   if (g.result) {
     const text = g.result.winner === null ? 'The game is a draw.' : `${g.players[g.result.winner].name} wins.`;
@@ -433,7 +515,11 @@ function renderActions(g) {
 
 function renderStatus(g) {
   const bar = $('#status');
-  bar.classList.toggle('mine', drafting(g));
+  bar.classList.toggle('mine', drafting(g) && !playback.active);
+  if (playback.active) {
+    bar.replaceChildren(el('span', { class: 'who', text: `Round ${playback.round}` }), el('span', { class: 'phase', text: 'Orders are being carried out' }));
+    return;
+  }
   if (g.result) {
     bar.replaceChildren(el('span', { class: 'who', text: `Game over after round ${g.result.round}` }));
     return;
@@ -471,11 +557,14 @@ function renderSide(g) {
     );
   }));
 
+  // During a playback the list fills in as each event is shown.
   const lines = [];
-  if (g.placements) lines.push(...describePlacements(g.placements, g));
+  if (playback.active) lines.push(...playback.steps.slice(1, playback.at + 1).map((step) => step.caption));
+  else if (g.placements) lines.push(...describePlacements(g.placements, g));
   else if (g.lastRound) lines.push(...g.lastRound.events.map((e) => describeEvent(e, g)));
-  $('#reportTitle').textContent = g.placements ? `Round ${g.round} placements`
-    : g.lastRound ? `Round ${g.lastRound.round} results` : 'Reports';
+  $('#reportTitle').textContent = playback.active ? `Round ${playback.round} results`
+    : g.placements ? `Round ${g.round} placements`
+      : g.lastRound ? `Round ${g.lastRound.round} results` : 'Reports';
   $('#report').replaceChildren(...(lines.length ? lines : ['Nothing to report yet.']).map((text) => el('li', { text })));
 
   $('#regions').replaceChildren(...g.regions.map((region) => el('li', {},
