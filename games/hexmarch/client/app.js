@@ -387,11 +387,12 @@ function renderActions(g) {
 
   const kids = [];
   if (ui.from != null && ui.to != null) {
-    const attack = g.territories[ui.to].owner !== g.you;
+    const target = g.territories[ui.to];
+    const attack = target.owner !== g.you;
     const odds = el('span', { class: 'odds' });
     const showOdds = () => {
       odds.textContent = attack
-        ? `${Math.round(captureOdds(ui.count, g.territories[ui.to].armies).win * 100)}% to capture as it stands`
+        ? `${Math.round(captureOdds(ui.count, target.armies, g.rules, target.castleOf === target.owner).win * 100)}% to capture as it stands`
         : 'Reinforcement';
     };
     kids.push(prompt(`${name(ui.from)} → ${name(ui.to)}`), ...stepper(1, available(g, ui.from), showOdds), odds);

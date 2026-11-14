@@ -15,9 +15,9 @@ and anyone (a person or another model) can pick the work up from here.
 
 _Update this section at the end of every working session._
 
-- Milestone 0 is built, tested and pushed.
-- Milestones 1 to 7 are planned below and not started.
-- Next up: milestone 1.
+- Milestones 0 and 1 are built, tested and pushed.
+- Milestones 2 to 7 are planned below and not started.
+- Next up: milestone 2.
 
 ## What the owner asked for
 
@@ -79,12 +79,12 @@ _Update this section at the end of every working session._
 
 So rule sets can be compared without touching code.
 
-- [ ] MH `engine/rules.js`: defaults, validation, one line of documentation per rule
-- [ ] MH Engine reads every tunable from `state.config.rules`
-- [ ] MH Odds accept dice counts, tie rule and castle bonus
-- [ ] MH Strategies read the rules from their view, so bots stay sensible under variants
-- [ ] MH The view and the record carry the rules in force
-- [ ] MH Tests: defaults reproduce earlier games; each rule changes what it should
+- [x] MH `engine/rules.js`: defaults, validation, one line of documentation per rule
+- [x] MH Engine reads every tunable from `state.config.rules`
+- [x] MH Odds accept dice counts, tie rule and castle bonus
+- [x] MH Strategies read the rules from their view, so bots stay sensible under variants
+- [x] MH The view and the record carry the rules in force
+- [x] MH Tests: defaults reproduce earlier games; each rule changes what it should
 
 ### 2. Briefing for AI players
 

@@ -7,6 +7,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createGame, exportRecord, observe, submit } from '../engine/engine.js';
 import { captureOdds, clashOdds } from '../engine/odds.js';
+import { RULES, parseRule } from '../engine/rules.js';
 import { describeEvent, describePlacements } from '../engine/report.js';
 import { PRESETS, act, makeAgent } from '../ai/strategies.js';
 import { simulate, tune } from '../ai/arena.js';
@@ -14,13 +15,13 @@ import { TUNED_FILE, loadTuned } from '../ai/tuned.js';
 
 const HELP = `Hexmarch command line
 
-  simulate --players aggressive,fortress,balanced [--games 200] [--seed 1] [--max-rounds 40]
+  simulate --players aggressive,fortress,balanced [--games 200] [--seed 1] [--rule key=value ...]
       Play many complete games between strategies and report win rates as JSON.
 
   tune [--generations 10] [--games 60] [--seed 1]
       Improve a strategy by self-play and save it as the "tuned" strategy.
 
-  new --file game.json --players you,aggressive,fortress [--seed 1] [--max-rounds 40]
+  new --file game.json --players you,aggressive,fortress [--seed 1] [--rule key=value ...]
       Start a game saved in a file. Seats named after a strategy are bots;
       any other name is an outside player who moves with "submit".
 
@@ -44,7 +45,8 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     if (!argv[i].startsWith('--')) { args._.push(argv[i]); continue; }
     const key = argv[i].slice(2);
-    args[key] = i + 1 < argv.length && !argv[i + 1].startsWith('--') ? argv[++i] : true;
+    const value = i + 1 < argv.length && !argv[i + 1].startsWith('--') ? argv[++i] : true;
+    if (key === 'rule') (args.rule ??= []).push(value); else args[key] = value;
   }
   return args;
 }
@@ -64,6 +66,13 @@ function pretty(value, depth = 0) {
 }
 
 const number = (value, fallback) => (value === undefined ? fallback : Number(value));
+
+// Rule overrides from repeated "--rule key=value" flags (and --max-rounds).
+function rulesFrom(args) {
+  const rules = Object.fromEntries((args.rule ?? []).map(parseRule));
+  if (args['max-rounds']) rules.maxRounds = Number(args['max-rounds']);
+  return rules;
+}
 const die = (message) => { console.error(message); process.exit(1); };
 
 function loadGame(args) {
@@ -113,7 +122,7 @@ const commands = {
       strategies: args.players.split(','),
       games: number(args.games, 200),
       seed: number(args.seed, 1),
-      maxRounds: args['max-rounds'] ? Number(args['max-rounds']) : undefined,
+      rules: rulesFrom(args),
     })));
   },
 
@@ -136,7 +145,7 @@ const commands = {
     const state = createGame({
       players: names.map((n, i) => (seats[i] === 'outside' ? n : `${n} (bot ${i})`)),
       seed: number(args.seed, 1),
-      maxRounds: number(args['max-rounds'], undefined),
+      rules: rulesFrom(args),
     });
     const game = { state, seats };
     runBots(game);

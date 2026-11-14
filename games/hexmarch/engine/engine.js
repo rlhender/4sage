@@ -7,15 +7,14 @@
 //   orders — everyone seals attack and move orders; resolved together.
 
 import { generateMap } from './map.js';
+import { resolveRules } from './rules.js';
 
 export const VERSION = 1;
 export const NEUTRAL = -1;
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 6;
-export const DEFAULT_MAX_ROUNDS = 40;
 
 const START_ARMIES = { 2: 36, 3: 31, 4: 26, 5: 22, 6: 18 };
-const CASTLE_GARRISON = 5;
 
 const maps = new Map();
 export function getMap(seed) {
@@ -69,25 +68,28 @@ function distancesFrom(map, start) {
 
 export function incomeFor(state, seat) {
   const map = getMap(state.config.mapSeed);
+  const rules = state.config.rules;
   const owned = state.owner.filter((o) => o === seat).length;
-  let n = Math.max(3, Math.floor(owned / 3));
+  let n = Math.max(rules.minIncome, Math.floor(owned / rules.territoriesPerArmy));
   for (const region of map.regions) {
-    if (region.territories.every((t) => state.owner[t] === seat)) n += region.bonus;
+    if (region.territories.every((t) => state.owner[t] === seat)) n += Math.round(region.bonus * rules.islandBonus);
   }
+  n += rules.castleIncome * state.players.filter((p) => state.owner[p.castle] === seat).length;
   return n;
 }
 
-export function createGame({ players, seed = 1, mapSeed = seed, maxRounds = DEFAULT_MAX_ROUNDS }) {
+export function createGame({ players, seed = 1, mapSeed = seed, rules: overrides }) {
   const names = players.map((p) => (typeof p === 'string' ? p : p.name));
   const count = names.length;
   if (count < MIN_PLAYERS || count > MAX_PLAYERS) throw new Error('Hexmarch needs 2 to 6 players.');
   if (!Number.isInteger(seed) || !Number.isInteger(mapSeed)) throw new Error('Seeds must be whole numbers.');
+  const rules = resolveRules(overrides);
   const map = getMap(mapSeed);
   const total = map.territories.length;
 
   const state = {
     version: VERSION,
-    config: { players: names, seed, mapSeed, maxRounds },
+    config: { players: names, seed, mapSeed, rules },
     rng: seed >>> 0,
     players: names.map((name) => ({ name, alive: true, castle: -1 })),
     owner: new Array(total).fill(NEUTRAL),
@@ -115,7 +117,7 @@ export function createGame({ players, seed = 1, mapSeed = seed, maxRounds = DEFA
   shuffle(state, [...Array(count).keys()]).forEach((seat, i) => {
     state.players[seat].castle = castles[i];
     state.owner[castles[i]] = seat;
-    state.armies[castles[i]] = CASTLE_GARRISON;
+    state.armies[castles[i]] = rules.castleGarrison;
   });
 
   // Everything else is dealt out, then spare armies land at random.
@@ -124,7 +126,7 @@ export function createGame({ players, seed = 1, mapSeed = seed, maxRounds = DEFA
     .forEach((t, i) => { state.owner[t] = (i + offset) % count; });
   for (let seat = 0; seat < count; seat++) {
     const mine = state.owner.flatMap((o, t) => (o === seat ? [t] : []));
-    for (let spare = START_ARMIES[count] - CASTLE_GARRISON - (mine.length - 1); spare > 0; spare--) {
+    for (let spare = START_ARMIES[count] - rules.castleGarrison - (mine.length - 1); spare > 0; spare--) {
       state.armies[mine[randInt(state, mine.length)]]++;
     }
   }
@@ -229,6 +231,8 @@ function advance(state) {
 
 function resolveOrders(state, sealed) {
   const events = [];
+  const rules = state.config.rules;
+  const castleOf = new Map(state.players.flatMap((p, seat) => (p.alive ? [[p.castle, seat]] : [])));
 
   // 1. Every ordered force leaves home at the same moment.
   const attacks = [];
@@ -250,9 +254,10 @@ function resolveOrders(state, sealed) {
     if (!b) continue;
     const before = [a.armies, b.armies];
     while (a.armies > 0 && b.armies > 0) {
-      const da = rollDice(state, Math.min(3, a.armies));
-      const db = rollDice(state, Math.min(3, b.armies));
+      const da = rollDice(state, Math.min(rules.attackDice, a.armies));
+      const db = rollDice(state, Math.min(rules.attackDice, b.armies));
       for (let i = 0; i < Math.min(da.length, db.length); i++) {
+        if (da[i] === db[i] && rules.clashTies === 'none') continue;
         if (da[i] >= db[i]) b.armies--;
         if (db[i] >= da[i]) a.armies--;
       }
@@ -273,9 +278,11 @@ function resolveOrders(state, sealed) {
     let att = force.armies;
     let def = state.armies[t];
     const before = [att, def];
+    const bonus = castleOf.get(t) === defender ? rules.castleDefence : 0;
     while (att > 0 && def > 0) {
-      const da = rollDice(state, Math.min(3, att));
-      const dd = rollDice(state, Math.min(2, def));
+      const da = rollDice(state, Math.min(rules.attackDice, att));
+      const dd = rollDice(state, Math.min(rules.defendDice, def));
+      dd[0] += bonus;
       for (let i = 0; i < Math.min(da.length, dd.length); i++) {
         if (da[i] > dd[i]) def--; else att--;
       }
@@ -302,7 +309,8 @@ function resolveOrders(state, sealed) {
   }
   for (const t of [...inbound.keys()].sort((x, y) => x - y)) {
     const forces = [...inbound.get(t).values()].map((f) => ({ ...f, tiebreak: random(state) }));
-    forces.sort((x, y) => y.armies - x.armies || x.tiebreak - y.tiebreak);
+    const order = rules.multiAttack === 'smallestFirst' ? -1 : 1;
+    forces.sort((x, y) => order * (y.armies - x.armies) || x.tiebreak - y.tiebreak);
     for (const force of forces) {
       if (state.owner[t] === force.seat) state.armies[t] += force.armies; else battle(force, t, false);
     }
@@ -337,21 +345,27 @@ function leader(standings) {
 }
 
 function finishRound(state, events) {
-  // A player whose castle is in someone else's hands is out; the rest of
-  // their land turns neutral and keeps its garrisons.
+  // A player whose castle is in someone else's hands is out. The rest of
+  // their land keeps its garrisons and turns neutral, or (by rule) passes to
+  // whoever took the castle, provided that player survived the round.
   const fallen = state.players.flatMap((p, seat) => (p.alive && state.owner[p.castle] !== seat ? [seat] : []));
   const fallenStandings = fallen.map((seat) => standing(state, seat));
   for (const seat of fallen) {
     events.push({ type: 'eliminated', seat, by: state.owner[state.players[seat].castle] });
     state.players[seat].alive = false;
   }
-  state.owner.forEach((o, t) => { if (fallen.includes(o)) state.owner[t] = NEUTRAL; });
+  const heir = new Map(fallen.map((seat) => {
+    const captor = state.owner[state.players[seat].castle];
+    const inherits = state.config.rules.fallenLand === 'captor' && captor !== NEUTRAL && !fallen.includes(captor);
+    return [seat, inherits ? captor : NEUTRAL];
+  }));
+  state.owner.forEach((o, t) => { if (heir.has(o)) state.owner[t] = heir.get(o); });
 
   const alive = state.players.flatMap((p, seat) => (p.alive ? [seat] : []));
   let result = null;
   if (alive.length === 1) result = { winner: alive[0], reason: 'lastCastle' };
   else if (alive.length === 0) result = { winner: leader(fallenStandings), reason: 'mutualElimination' };
-  else if (state.round >= state.config.maxRounds) {
+  else if (state.round >= state.config.rules.maxRounds) {
     result = { winner: leader(alive.map((seat) => standing(state, seat))), reason: 'roundLimit' };
   }
   if (result) {
@@ -382,7 +396,8 @@ export function observe(state, seat) {
     mapSeed: state.config.mapSeed,
     you: seat,
     round: state.round,
-    maxRounds: state.config.maxRounds,
+    maxRounds: state.config.rules.maxRounds,
+    rules: state.config.rules,
     phase: state.phase,
     income: state.phase === 'place' && state.players[seat]?.alive ? state.income[seat] : 0,
     submitted: state.submitted[seat] ?? null,

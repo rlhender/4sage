@@ -50,11 +50,14 @@ function survey(obs, w) {
     ? Math.max(1, Math.ceil(w.castleGuard * threat(t)))
     : 1 + Math.floor(w.reserve * Math.max(0, ...hostile(t).map((n) => T[n].armies))));
 
-  return { me, T, mine, castle, others, hostile, threat, value, keep };
+  // Chance that a force of this size captures territory n as it stands.
+  const odds = (force, n) => captureOdds(force, T[n].armies, obs.rules, T[n].castleOf === T[n].owner).win;
+
+  return { me, T, mine, castle, others, hostile, threat, value, keep, odds };
 }
 
 export function choosePlacements(obs, w) {
-  const { T, mine, castle, others, threat, value } = survey(obs, w);
+  const { T, mine, castle, others, threat, value, odds } = survey(obs, w);
   let left = obs.income;
   const placed = new Map();
   const add = (t, n) => { if (n > 0) { placed.set(t, (placed.get(t) ?? 0) + n); left -= n; } };
@@ -66,7 +69,7 @@ export function choosePlacements(obs, w) {
     let bestScore = -1;
     for (const t of mine) {
       for (const n of others(t)) {
-        const score = value(n) * captureOdds(T[t].armies - 1 + left, T[n].armies).win;
+        const score = value(n) * odds(T[t].armies - 1 + left, n);
         if (score > bestScore) { bestScore = score; best = t; }
       }
     }
@@ -76,7 +79,7 @@ export function choosePlacements(obs, w) {
 }
 
 export function chooseOrders(obs, w) {
-  const { me, T, mine, others, value, keep } = survey(obs, w);
+  const { me, T, mine, others, value, keep, odds } = survey(obs, w);
   const orders = [];
   const minWin = 0.95 - 0.55 * w.aggression;
   const free = new Map(mine.map((t) => {
@@ -97,7 +100,7 @@ export function chooseOrders(obs, w) {
       for (const t of sources) {
         used.push(t);
         force += free.get(t);
-        win = captureOdds(force, T[n].armies).win;
+        win = odds(force, n);
         if (win >= 0.92) break;
       }
       if (win < minWin) continue;

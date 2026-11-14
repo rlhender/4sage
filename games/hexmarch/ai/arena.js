@@ -7,18 +7,23 @@ import { PRESETS, WEIGHTS, act, makeAgent } from './strategies.js';
 
 // Plays one whole game between synchronous agents and returns the final state.
 export function playGame(agents, seed, options = {}) {
-  const state = createGame({ players: agents.map((a) => a.name), seed, ...options });
+  const state = createGame({ players: agents.map((a) => a.name), seed, mapSeed: options.mapSeed ?? seed, rules: options.rules });
+  let round = state.round;
   while (state.phase !== 'over') {
     const seat = state.players.findIndex((p, i) => p.alive && state.submitted[i] === null);
     const outcome = submit(state, seat, act(agents[seat], observe(state, seat)));
     if (!outcome.ok) throw new Error(`${agents[seat].name} made an illegal submission: ${outcome.error}`);
+    if (options.onRound && (state.round !== round || state.phase === 'over')) {
+      options.onRound(state, round);
+      round = state.round;
+    }
   }
   return state;
 }
 
 // Plays `games` games between the given strategies, rotating seats so that no
 // strategy benefits from where it sits.
-export function simulate({ strategies, games = 100, seed = 1, maxRounds }) {
+export function simulate({ strategies, games = 100, seed = 1, rules }) {
   const rand = rng32(seed);
   const agents = strategies.map((spec, i) => {
     const base = typeof spec === 'string' ? spec : spec.name ?? 'custom';
@@ -32,7 +37,7 @@ export function simulate({ strategies, games = 100, seed = 1, maxRounds }) {
   for (let g = 0; g < games; g++) {
     const shift = g % agents.length;
     const seated = agents.map((_, i) => agents[(i + shift) % agents.length]);
-    const state = playGame(seated, seed * 100003 + g, maxRounds ? { maxRounds } : {});
+    const state = playGame(seated, seed * 100003 + g, { rules });
     rounds += state.result.round;
     reasons[state.result.reason] = (reasons[state.result.reason] ?? 0) + 1;
     if (state.result.winner === null) draws++;
@@ -51,7 +56,7 @@ export function simulate({ strategies, games = 100, seed = 1, maxRounds }) {
 // Self-improvement by repeated play: each generation, mutated copies of the
 // champion play the same set of games against the standard personalities, and
 // the best performer becomes the next champion.
-export function tune({ start = PRESETS.balanced, generations = 10, games = 60, seed = 1, rivals = ['aggressive', 'fortress', 'balanced'], onGeneration }) {
+export function tune({ start = PRESETS.balanced, generations = 10, games = 60, seed = 1, rivals = ['aggressive', 'fortress', 'balanced'], rules, onGeneration }) {
   const rand = rng32(seed);
   const mutate = (weights) => Object.fromEntries(Object.entries(WEIGHTS).map(([key, [lo, hi]]) => {
     const nudge = (rand() + rand() + rand() - 1.5) * 0.35 * (hi - lo);
@@ -63,7 +68,7 @@ export function tune({ start = PRESETS.balanced, generations = 10, games = 60, s
       const lineup = [makeAgent(weights, 'candidate'), makeAgent(rivals[g % rivals.length]), makeAgent(rivals[(g + 1) % rivals.length])];
       const shift = g % lineup.length;
       const seated = lineup.map((_, i) => lineup[(i + shift) % lineup.length]);
-      const state = playGame(seated, seed * 7919 + generation * 100003 + g);
+      const state = playGame(seated, seed * 7919 + generation * 100003 + g, { rules });
       if (state.result.winner !== null && seated[state.result.winner].name === 'candidate') wins++;
     }
     return wins / games;

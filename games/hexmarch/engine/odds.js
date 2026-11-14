@@ -1,11 +1,14 @@
 // Exact odds for fights to the death, for anyone (human, bot or LLM) who
 // wants to reason about expected outcomes before committing armies.
 
+import { DEFAULT_RULES } from './rules.js';
+
 const MAX = 120; // table size; larger fights are scaled down to fit
 
 // Chance of each (lossA, lossB) when A rolls nA dice against B's nB dice.
-// In a battle ties cost the attacker; in a border clash they cost both sides.
-function rollOutcomes(nA, nB, clash) {
+// kind 'battle': ties cost the attacker, and `bonus` is added to B's best die.
+// kind 'both' / 'none': a border clash where a tie costs both sides, or neither.
+function rollOutcomes(nA, nB, kind, bonus) {
   const tally = new Map();
   const dice = new Array(nA + nB).fill(1);
   const total = 6 ** dice.length;
@@ -14,21 +17,25 @@ function rollOutcomes(nA, nB, clash) {
     for (let i = 0; i < dice.length; i++) { dice[i] = 1 + (v % 6); v = Math.floor(v / 6); }
     const a = dice.slice(0, nA).sort((x, y) => y - x);
     const b = dice.slice(nA).sort((x, y) => y - x);
+    b[0] += bonus;
     let lossA = 0;
     let lossB = 0;
     for (let i = 0; i < Math.min(nA, nB); i++) {
       if (a[i] > b[i]) lossB++;
-      else if (a[i] < b[i] || !clash) lossA++;
-      else { lossA++; lossB++; }
+      else if (a[i] < b[i] || kind === 'battle') lossA++;
+      else if (kind === 'both') { lossA++; lossB++; }
     }
     const key = lossA * 4 + lossB;
     tally.set(key, (tally.get(key) ?? 0) + 1 / total);
   }
-  return [...tally].map(([key, p]) => ({ lossA: key >> 2, lossB: key & 3, p }));
+  // A roll where nobody loses is simply rolled again, so share it out.
+  const still = tally.get(0) ?? 0;
+  tally.delete(0);
+  return [...tally].map(([key, p]) => ({ lossA: key >> 2, lossB: key & 3, p: p / (1 - still) }));
 }
 
 // table[a][b] = [P(A wins), P(B wins), expected A left, expected B left]
-function buildTable(diceA, diceB, clash) {
+function buildTable(diceA, diceB, kind, bonus = 0) {
   const outcomes = {};
   const table = [];
   for (let a = 0; a <= MAX; a++) {
@@ -38,7 +45,7 @@ function buildTable(diceA, diceB, clash) {
       const nA = Math.min(diceA, a);
       const nB = Math.min(diceB, b);
       const cell = [0, 0, 0, 0];
-      for (const o of (outcomes[nA * 4 + nB] ??= rollOutcomes(nA, nB, clash))) {
+      for (const o of (outcomes[nA * 4 + nB] ??= rollOutcomes(nA, nB, kind, bonus))) {
         const next = table[a - o.lossA][b - o.lossB];
         for (let i = 0; i < 4; i++) cell[i] += o.p * next[i];
       }
@@ -48,8 +55,12 @@ function buildTable(diceA, diceB, clash) {
   return table;
 }
 
-let battleTable = null;
-let clashTable = null;
+const tables = new Map();
+function table(diceA, diceB, kind, bonus = 0) {
+  const key = `${diceA}:${diceB}:${kind}:${bonus}`;
+  if (!tables.has(key)) tables.set(key, buildTable(diceA, diceB, kind, bonus));
+  return tables.get(key);
+}
 
 function lookup(table, a, b) {
   const scale = Math.max(1, Math.max(a, b) / MAX);
@@ -58,14 +69,16 @@ function lookup(table, a, b) {
   return [cell[0], cell[1], cell[2] * scale, cell[3] * scale];
 }
 
-// An attacking force (up to 3 dice) against a garrison (up to 2 dice, wins ties).
-export function captureOdds(attackers, defenders) {
-  const [win, , attackersLeft, defendersLeft] = lookup(battleTable ??= buildTable(3, 2, false), attackers, defenders);
+// An attacking force against a garrison, which wins ties. Pass `castle` when
+// the target is a castle defended by its own player.
+export function captureOdds(attackers, defenders, rules = DEFAULT_RULES, castle = false) {
+  const odds = table(rules.attackDice, rules.defendDice, 'battle', castle ? rules.castleDefence : 0);
+  const [win, , attackersLeft, defendersLeft] = lookup(odds, attackers, defenders);
   return { win, attackersLeft, defendersLeft };
 }
 
-// Two attacking forces meeting on a border (up to 3 dice each, ties cost both).
-export function clashOdds(a, b) {
-  const [aWins, bWins, aLeft, bLeft] = lookup(clashTable ??= buildTable(3, 3, true), a, b);
+// Two attacking forces meeting on a border.
+export function clashOdds(a, b, rules = DEFAULT_RULES) {
+  const [aWins, bWins, aLeft, bLeft] = lookup(table(rules.attackDice, rules.attackDice, rules.clashTies), a, b);
   return { aWins, bWins, bothDestroyed: Math.max(0, 1 - aWins - bWins), aLeft, bLeft };
 }

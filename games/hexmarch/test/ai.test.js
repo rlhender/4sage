@@ -21,7 +21,7 @@ test('every strategy plays complete, legal games at every table size', () => {
     const state = playGame(agents, seed); // throws on any illegal submission
     assert.equal(state.phase, 'over');
     assert.ok(state.armies.every((n) => n >= 1), `seed ${seed}: empty territory`);
-    assert.ok(state.result.round <= state.config.maxRounds);
+    assert.ok(state.result.round <= state.config.rules.maxRounds);
     // The record alone reproduces the game.
     assert.deepEqual(replay(exportRecord(state)).owner, state.owner);
   }

@@ -5,6 +5,7 @@ import {
   NEUTRAL, createGame, exportRecord, getMap, incomeFor, observe, replay, retract, submit,
 } from '../engine/engine.js';
 import { captureOdds, clashOdds } from '../engine/odds.js';
+import { DEFAULT_RULES, parseRule, resolveRules } from '../engine/rules.js';
 import { describeEvent } from '../engine/report.js';
 
 const names = (n) => Array.from({ length: n }, (_, i) => `P${i + 1}`);
@@ -220,7 +221,7 @@ test('losing your castle eliminates you and the last castle wins', () => {
 });
 
 test('the round limit ends the game in favour of the largest realm', () => {
-  const state = createGame({ players: names(2), seed: 4, maxRounds: 1 });
+  const state = createGame({ players: names(2), seed: 4, rules: { maxRounds: 1 } });
   for (const seat of [0, 1]) {
     submit(state, seat, { placements: [{ territory: state.players[seat].castle, armies: state.income[seat] }] });
   }
@@ -275,4 +276,100 @@ test('battle odds are exact', () => {
   assert.ok(Math.abs(even.aWins + even.bWins + even.bothDestroyed - 1) < 1e-9);
   assert.ok(Math.abs(clashOdds(1, 1).bothDestroyed - 1 / 6) < 1e-12);
   assert.ok(captureOdds(600, 200).win > 0.99, 'large fights are scaled, not rejected');
+});
+
+// ---------- rules as data ----------
+
+test('unknown rules and out-of-range values are rejected', () => {
+  assert.deepEqual(resolveRules(), DEFAULT_RULES);
+  assert.equal(resolveRules({ castleGarrison: 9 }).castleGarrison, 9);
+  assert.throws(() => resolveRules({ castleGarison: 9 }), /Unknown rule/);
+  assert.throws(() => resolveRules({ attackDice: 4 }), /whole number from 1 to 3/);
+  assert.throws(() => resolveRules({ fallenLand: 'burned' }), /neutral or captor/);
+  assert.throws(() => createGame({ players: names(2), rules: { minIncome: 2.5 } }), /whole number/);
+  assert.equal(resolveRules({ islandBonus: 0.5 }).islandBonus, 0.5);
+  assert.deepEqual(parseRule('fallenLand=captor'), ['fallenLand', 'captor']);
+  assert.deepEqual(parseRule('castleDefence=1'), ['castleDefence', 1]);
+});
+
+test('a game carries the rules it is played under', () => {
+  const state = createGame({ players: names(3), seed: 6, rules: { castleGarrison: 9, maxRounds: 12 } });
+  assert.ok(state.players.every((p) => state.armies[p.castle] >= 9));
+  const view = observe(state, 0);
+  assert.equal(view.maxRounds, 12);
+  assert.equal(view.rules.castleGarrison, 9);
+  assert.equal(view.rules.attackDice, 3);
+  assert.equal(exportRecord(state).config.rules.maxRounds, 12);
+});
+
+test('income rules change what players receive', () => {
+  const base = createGame({ players: names(2), seed: 6 });
+  const whole = getMap(6).regions[0];
+  const give = (state) => { whole.territories.forEach((t) => { state.owner[t] = 0; }); return state; };
+  const income = (rules) => incomeFor(give(createGame({ players: names(2), seed: 6, rules })), 0);
+  const normal = incomeFor(give(base), 0);
+  assert.equal(income({ islandBonus: 0 }), normal - whole.bonus);
+  assert.equal(income({ islandBonus: 2 }), normal + whole.bonus);
+  assert.equal(income({ castleIncome: 2 }), normal + 2 * base.players.filter((p) => give(base).owner[p.castle] === 0).length);
+  assert.equal(income({ minIncome: 15 }), 15 + whole.bonus);
+  assert.ok(income({ territoriesPerArmy: 1 }) > normal);
+});
+
+test('dice rules change the odds, and the engine fights by them', () => {
+  const castle = resolveRules({ castleDefence: 3 });
+  // One die each, defender adds 3: only 5 v 1, 6 v 1 and 6 v 2 win.
+  assert.ok(Math.abs(captureOdds(1, 1, castle, true).win - 3 / 36) < 1e-12);
+  assert.ok(Math.abs(captureOdds(1, 1, castle, false).win - 15 / 36) < 1e-12);
+  assert.ok(captureOdds(10, 10, resolveRules({ attackDice: 1 })).win < captureOdds(10, 10).win);
+  assert.ok(captureOdds(10, 10, resolveRules({ defendDice: 3 })).win < captureOdds(10, 10).win);
+  assert.equal(clashOdds(4, 4, resolveRules({ clashTies: 'none' })).bothDestroyed, 0);
+
+  // The same attack on a castle succeeds far less often with the bonus on.
+  const captures = (rules) => {
+    let n = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const state = createGame({ players: names(2), seed, rules: { ...rules, castleGarrison: 2 } });
+      const target = state.players[1].castle;
+      const from = getMap(seed).territories[target].adj[0];
+      state.owner[from] = 0;
+      state.armies[from] = 4;
+      state.armies[target] = 2;
+      state.phase = 'orders';
+      submit(state, 0, { orders: [{ from, to: target, armies: 3 }] });
+      submit(state, 1, { orders: [] });
+      if (state.owner[target] === 0) n++;
+    }
+    return n;
+  };
+  const plain = captures({});
+  const fortified = captures({ castleDefence: 2 });
+  assert.ok(Math.abs(plain / 300 - captureOdds(3, 2).win) < 0.09, `plain ${plain}`);
+  assert.ok(Math.abs(fortified / 300 - captureOdds(3, 2, resolveRules({ castleDefence: 2 }), true).win) < 0.09, `fortified ${fortified}`);
+  assert.ok(fortified < plain);
+});
+
+test('fallen land can pass to the captor, and the smaller force can fight first', () => {
+  const state = createGame({ players: names(3), seed: 9, rules: { fallenLand: 'captor' } });
+  const castle = state.players[2].castle;
+  const next = getMap(9).territories[castle].adj[0];
+  const theirs = state.owner.filter((o) => o === 2).length - (state.owner[next] === 2 ? 1 : 0);
+  const mine = state.owner.filter((o) => o === 0).length + (state.owner[next] === 0 ? 0 : 1);
+  state.owner[next] = 0;
+  state.armies[next] = 80;
+  state.phase = 'orders';
+  seal(state, 0, [{ from: next, to: castle, armies: 79 }]);
+  seal(state, 1, []);
+  seal(state, 2, []);
+  assert.equal(state.players[2].alive, false);
+  assert.ok(!state.owner.includes(NEUTRAL));
+  assert.equal(state.owner.filter((o) => o === 0).length, mine + theirs);
+
+  const { state: duelState, a, b, c } = duel(30, 50);
+  duelState.config.rules = resolveRules({ multiAttack: 'smallestFirst' });
+  const d = getMap(3).territories[c].adj.find((t) => t !== a && t !== b && duelState.owner[t] === NEUTRAL);
+  duelState.owner[d] = 1;
+  duelState.armies[d] = 50;
+  seal(duelState, 0, [{ from: a, to: c, armies: 10 }]);
+  seal(duelState, 1, [{ from: d, to: c, armies: 40 }]);
+  assert.equal(events(duelState).find((e) => e.type === 'battle').attacker, 0);
 });
