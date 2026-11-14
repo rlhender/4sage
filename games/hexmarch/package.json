@@ -1,7 +1,7 @@
 {
   "name": "hexmarch",
   "version": "0.1.0",
-  "description": "Online multiplayer territory-conquest game on a generated hex archipelago",
+  "description": "Simultaneous-turn territory-conquest game with a headless JSON engine, AI strategies and a browser GUI",
   "private": true,
   "type": "module",
   "engines": {
@@ -9,9 +9,13 @@
   },
   "scripts": {
     "start": "node server/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "simulate": "node cli/hexmarch.js simulate"
   },
   "dependencies": {
     "ws": "^8.18.0"
+  },
+  "bin": {
+    "hexmarch": "cli/hexmarch.js"
   }
 }

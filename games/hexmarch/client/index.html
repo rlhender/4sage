@@ -18,7 +18,7 @@
 
   <main>
     <section id="home" class="card narrow">
-      <p class="lede">Conquer a shattered archipelago. Two to six players, a new map every game.</p>
+      <p class="lede">Hold your castle, take theirs. Everyone moves at once: place armies in the open, then seal your orders.</p>
       <label for="name">Your name</label>
       <input id="name" maxlength="20" autocomplete="nickname" placeholder="Commander">
       <button id="create" class="primary">Create a room</button>
@@ -44,11 +44,9 @@
         <div id="actions" class="actions"></div>
       </div>
       <aside class="side">
-        <div id="dice" class="panel" hidden></div>
         <div class="panel"><h3>Players</h3><ul id="players" class="players"></ul></div>
-        <div class="panel"><h3>Your cards</h3><div id="cards" class="cards"></div></div>
-        <div class="panel"><h3>Regions</h3><ul id="regions" class="regions"></ul></div>
-        <div class="panel"><h3>Log</h3><ol id="log" class="log"></ol></div>
+        <div class="panel"><h3 id="reportTitle">Reports</h3><ol id="report" class="log"></ol></div>
+        <div class="panel"><h3>Islands</h3><ul id="regions" class="regions"></ul></div>
       </aside>
     </section>
   </main>

@@ -1,5 +1,7 @@
-// Hexmarch server: serves the client and runs every game authoritatively
-// over WebSockets. Rooms live in memory; nothing is persisted.
+// Hexmarch server: serves the browser client and hosts games over WebSockets.
+// It owns no rules. It passes sealed submissions to the engine, lets bots take
+// their seats through the same interface, and sends each player their view.
+// Rooms live in memory; nothing is persisted.
 
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -7,12 +9,14 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { WebSocketServer } from 'ws';
-import {
-  MIN_PLAYERS, MAX_PLAYERS, applyAction, botAction, createGame, forceEndTurn, viewFor,
-} from '../shared/game.js';
+import { MIN_PLAYERS, MAX_PLAYERS, createGame, observe, retract, submit } from '../engine/engine.js';
+import { PRESETS, act, makeAgent } from '../ai/strategies.js';
+import { loadTuned } from '../ai/tuned.js';
+
+loadTuned();
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const STATIC = { '/shared/': path.join(ROOT, 'shared'), '/': path.join(ROOT, 'client') };
+const STATIC = { '/engine/': path.join(ROOT, 'engine'), '/': path.join(ROOT, 'client') };
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -21,9 +25,9 @@ const MIME = {
 };
 
 const env = (name, fallback) => Number(process.env[name] ?? fallback);
-const BOT_DELAY_MS = env('BOT_DELAY_MS', 800); // pause between bot moves
-const GRACE_MS = env('GRACE_MS', 30_000); // wait for a dropped player before playing for them
-const IDLE_MS = env('IDLE_MS', 180_000); // wait for a connected but silent player
+const PHASE_MS = env('PHASE_MS', 180_000); // time everyone has to seal a phase
+const GRACE_MS = env('GRACE_MS', 30_000); // shorter wait when only dropped players are missing
+const BOT_DELAY_MS = env('BOT_DELAY_MS', 1500); // pace of a game only bots are still playing
 const ROOM_TTL_MS = env('ROOM_TTL_MS', 30 * 60_000); // empty rooms are removed after this
 const MAX_ROOMS = 500;
 
@@ -57,7 +61,8 @@ function broadcast(room) {
       you: player.id,
       hostId: room.hostId,
       players: room.players.map((p) => ({ id: p.id, name: p.name, isBot: p.isBot, connected: p.connected })),
-      game: room.game ? viewFor(room.game, seat) : null,
+      game: room.game ? observe(room.game, seat) : null,
+      msLeft: room.deadline ? Math.max(0, room.deadline - Date.now()) : null,
     });
   });
 }
@@ -68,30 +73,51 @@ function touch(room) {
   room.emptySince = hasHumans(room) ? null : room.emptySince ?? Date.now();
 }
 
-// Decide whether the server has to move for the current player, and when.
-function schedule(room) {
+// Seal a move on behalf of a seat: its own bot, or a stand-in for a human
+// who ran out of time.
+function moveFor(room, seat) {
+  const game = room.game;
+  const agent = room.players[seat].agent ?? makeAgent('balanced');
+  if (submit(game, seat, act(agent, observe(game, seat))).ok) return;
+  const castle = game.players[seat].castle;
+  submit(game, seat, game.phase === 'place'
+    ? { placements: [{ territory: castle, armies: game.income[seat] }] }
+    : { orders: [] });
+}
+
+function moveForAll(room, isDue) {
+  const game = room.game;
+  const phase = `${game.round}:${game.phase}`;
+  room.players.forEach((player, seat) => {
+    if (`${game.round}:${game.phase}` !== phase) return; // the phase resolved; the rest belong to the next one
+    if (game.players[seat].alive && game.submitted[seat] === null && isDue(player)) moveFor(room, seat);
+  });
+}
+
+// Called after anything changes: bots seal at once, humans get until the
+// deadline, and a game with only bots left is stepped along at a watchable pace.
+function drive(room) {
   clearTimeout(room.timer);
   room.timer = null;
+  room.deadline = null;
   const game = room.game;
   if (!game || game.phase === 'over' || !hasHumans(room)) return;
-  const seat = game.turn;
-  const player = room.players[seat];
-  const auto = player.isBot || room.autopilot === seat;
-  const delay = auto ? BOT_DELAY_MS : player.connected ? IDLE_MS : GRACE_MS;
-  room.timer = setTimeout(() => {
-    if (!player.isBot) room.autopilot = seat;
-    if (!applyAction(game, seat, botAction(game)).ok) forceEndTurn(game);
-    afterMove(room, seat);
-  }, delay);
+  const waiting = () => room.players.filter((p, seat) => !p.isBot && game.players[seat].alive && game.submitted[seat] === null);
+  const step = (isDue) => () => { moveForAll(room, isDue); drive(room); broadcast(room); };
+
+  if (waiting().length === 0) {
+    room.timer = setTimeout(step(() => true), BOT_DELAY_MS);
+    return;
+  }
+  moveForAll(room, (player) => player.isBot);
+  const phase = `${game.round}:${game.phase}`;
+  if (room.phase !== phase) { room.phase = phase; room.phaseEnds = Date.now() + PHASE_MS; }
+  const grace = waiting().every((p) => !p.connected) ? Date.now() + GRACE_MS : Infinity;
+  room.deadline = Math.min(room.phaseEnds, grace);
+  room.timer = setTimeout(step(() => true), Math.max(0, room.deadline - Date.now()));
 }
 
-function afterMove(room, seat) {
-  if (room.game.turn !== seat) room.autopilot = null;
-  broadcast(room);
-  schedule(room);
-}
-
-function addPlayer(room, name, ws) {
+function addPlayer(room, name, ws, strategy) {
   const player = {
     id: randomBytes(4).toString('hex'),
     token: randomBytes(16).toString('hex'),
@@ -99,6 +125,7 @@ function addPlayer(room, name, ws) {
     isBot: !ws,
     connected: !!ws,
     ws: ws ?? null,
+    agent: ws ? null : makeAgent(strategy),
   };
   room.players.push(player);
   if (ws) attach(ws, room, player);
@@ -122,7 +149,7 @@ function removePlayer(room, player) {
     player.isBot = true;
     player.connected = false;
     player.ws = null;
-    room.game.players[room.players.indexOf(player)].isBot = true;
+    player.agent = makeAgent('balanced');
   } else {
     room.players.splice(room.players.indexOf(player), 1);
   }
@@ -134,8 +161,8 @@ function removePlayer(room, player) {
   }
   if (room.hostId === player.id) room.hostId = nextHost.id;
   touch(room);
+  drive(room);
   broadcast(room);
-  schedule(room);
 }
 
 function onDisconnect(ws) {
@@ -147,8 +174,8 @@ function onDisconnect(ws) {
   player.connected = false;
   player.ws = null;
   touch(room);
+  drive(room);
   broadcast(room);
-  schedule(room);
 }
 
 function handle(ws, msg) {
@@ -158,7 +185,7 @@ function handle(ws, msg) {
     if (ws.session) return;
     if (msg.t === 'create') {
       if (rooms.size >= MAX_ROOMS) return sendError(ws, 'The server is full. Try again later.');
-      const room = { code: newCode(), players: [], game: null, timer: null, autopilot: null, emptySince: null };
+      const room = { code: newCode(), players: [], game: null, timer: null, deadline: null, phase: null, emptySince: null };
       rooms.set(room.code, room);
       room.hostId = addPlayer(room, cleanName(msg.name), ws).id;
       return broadcast(room);
@@ -168,10 +195,9 @@ function handle(ws, msg) {
       const player = room?.players.find((p) => !p.isBot && p.token === msg.token);
       if (!player) return sendError(ws, 'That game is no longer available.', 'norejoin');
       attach(ws, room, player);
-      if (room.game && room.autopilot === room.players.indexOf(player)) room.autopilot = null;
       touch(room);
-      broadcast(room);
-      return schedule(room);
+      drive(room);
+      return broadcast(room);
     }
     if (!room) return sendError(ws, 'No room with that code.');
     if (room.game) return sendError(ws, 'That game has already started.');
@@ -193,9 +219,10 @@ function handle(ws, msg) {
     case 'addBot': {
       if (!isHost || room.game) return;
       if (room.players.length >= MAX_PLAYERS) return sendError(ws, 'The room is full.');
-      const used = new Set(room.players.map((p) => p.name));
-      const name = BOT_NAMES.find((n) => !used.has(`${n} (bot)`)) ?? 'Bot';
-      addPlayer(room, `${name} (bot)`, null);
+      const strategy = PRESETS[msg.strategy] ? msg.strategy : 'balanced';
+      const used = room.players.map((p) => p.name.split(' ')[0]);
+      const name = BOT_NAMES.find((n) => !used.includes(n)) ?? 'Bot';
+      addPlayer(room, `${name} (${strategy} bot)`, null, strategy);
       return broadcast(room);
     }
 
@@ -209,27 +236,31 @@ function handle(ws, msg) {
     case 'start': {
       if (!isHost || room.game) return;
       if (room.players.length < MIN_PLAYERS) return sendError(ws, 'You need at least two players. Add a bot or invite a friend.');
-      room.game = createGame(room.players, randomInt(2 ** 31));
-      room.autopilot = null;
-      broadcast(room);
-      return schedule(room);
+      room.game = createGame({ players: room.players.map((p) => p.name), seed: randomInt(2 ** 31) });
+      drive(room);
+      return broadcast(room);
     }
 
     case 'rematch': {
       if (!isHost || !room.game || room.game.phase !== 'over') return;
       clearTimeout(room.timer);
       room.game = null;
-      room.autopilot = null;
+      room.deadline = null;
       return broadcast(room);
     }
 
-    case 'action': {
-      const game = room.game;
-      if (!game) return;
-      const seat = room.players.indexOf(player);
-      const result = applyAction(game, seat, msg.action);
-      if (!result.ok) return sendError(ws, result.error);
-      return afterMove(room, seat);
+    case 'submit': {
+      if (!room.game) return;
+      const outcome = submit(room.game, room.players.indexOf(player), msg.submission);
+      if (!outcome.ok) return sendError(ws, outcome.error);
+      drive(room);
+      return broadcast(room);
+    }
+
+    case 'retract': {
+      if (!room.game) return;
+      retract(room.game, room.players.indexOf(player));
+      return broadcast(room);
     }
 
     default:
@@ -246,7 +277,7 @@ async function serveStatic(req, res) {
   }
   if (pathname === '/healthz') { res.writeHead(200).end('ok'); return; }
   if (pathname === '/') pathname = '/index.html';
-  const prefix = pathname.startsWith('/shared/') ? '/shared/' : '/';
+  const prefix = pathname.startsWith('/engine/') ? '/engine/' : '/';
   const base = STATIC[prefix];
   const file = path.join(base, pathname.slice(prefix.length));
   if (!file.startsWith(base + path.sep)) { res.writeHead(403).end(); return; }
@@ -267,7 +298,7 @@ export function startServer(port = 3000) {
     if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405).end(); return; }
     serveStatic(req, res);
   });
-  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 4096 });
+  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16384 });
 
   wss.on('connection', (ws) => {
     ws.alive = true;

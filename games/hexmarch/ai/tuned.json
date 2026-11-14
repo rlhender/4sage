@@ -1,0 +1,80 @@
+{
+  "weights": {
+    "aggression": 1,
+    "castleGuard": 1.33,
+    "reserve": 0.14,
+    "commit": 1,
+    "castleHunt": 1.22,
+    "islandFocus": 0.87
+  },
+  "history": [
+    {
+      "generation": 1,
+      "winRate": 0.4666666666666667,
+      "championBefore": 0.4
+    },
+    {
+      "generation": 2,
+      "winRate": 0.43333333333333335,
+      "championBefore": 0.43333333333333335
+    },
+    {
+      "generation": 3,
+      "winRate": 0.5888888888888889,
+      "championBefore": 0.5222222222222223
+    },
+    {
+      "generation": 4,
+      "winRate": 0.6111111111111112,
+      "championBefore": 0.6111111111111112
+    },
+    {
+      "generation": 5,
+      "winRate": 0.5444444444444444,
+      "championBefore": 0.5222222222222223
+    },
+    {
+      "generation": 6,
+      "winRate": 0.6222222222222222,
+      "championBefore": 0.6111111111111112
+    },
+    {
+      "generation": 7,
+      "winRate": 0.6222222222222222,
+      "championBefore": 0.5
+    },
+    {
+      "generation": 8,
+      "winRate": 0.5555555555555556,
+      "championBefore": 0.5555555555555556
+    },
+    {
+      "generation": 9,
+      "winRate": 0.6111111111111112,
+      "championBefore": 0.6111111111111112
+    },
+    {
+      "generation": 10,
+      "winRate": 0.6333333333333333,
+      "championBefore": 0.6333333333333333
+    },
+    {
+      "generation": 11,
+      "winRate": 0.5444444444444444,
+      "championBefore": 0.5444444444444444
+    },
+    {
+      "generation": 12,
+      "winRate": 0.5888888888888889,
+      "championBefore": 0.45555555555555555
+    }
+  ],
+  "generations": 12,
+  "games": 90,
+  "seed": 3,
+  "rivals": [
+    "aggressive",
+    "fortress",
+    "balanced"
+  ]
+}

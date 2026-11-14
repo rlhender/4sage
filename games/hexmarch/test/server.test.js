@@ -4,6 +4,7 @@ import { WebSocket } from 'ws';
 
 process.env.BOT_DELAY_MS = '1';
 process.env.GRACE_MS = '40';
+process.env.PHASE_MS = '5000';
 const { startServer } = await import('../server/server.js');
 
 const server = await startServer(0);
@@ -51,61 +52,68 @@ async function twoPlayerGame() {
   return { host, guest, code, hostView: a, guestView: b };
 }
 
-test('serves the client and the shared modules, and nothing outside them', async () => {
+test('serves the client and the engine modules, and nothing outside them', async () => {
   const get = (path) => fetch(`http://localhost:${port}${path}`);
   const page = await get('/');
   assert.equal(page.status, 200);
   assert.match(await page.text(), /Hexmarch/);
-  assert.equal((await get('/shared/game.js')).status, 200);
+  assert.equal((await get('/engine/map.js')).status, 200);
   assert.equal((await get('/app.js')).status, 200);
-  assert.equal((await get('/shared/../package.json')).status, 404);
+  assert.equal((await get('/engine/../package.json')).status, 404);
   assert.equal((await get('/..%2fpackage.json')).status, 403);
-  assert.equal((await get('/shared/..%2f..%2fpackage.json')).status, 403);
-  assert.equal((await get('/shared/..%2fserver%2fserver.js')).status, 403);
+  assert.equal((await get('/engine/..%2fserver%2fserver.js')).status, 403);
 });
 
-test('two players can create, join and start a game', async () => {
+const castlePlacement = (view) => ({ placements: [{ territory: view.game.players[view.game.you].castle, armies: view.game.income }] });
+
+test('two players see the same board and seal each phase in secret', async () => {
   const { host, guest, hostView, guestView } = await twoPlayerGame();
   assert.equal(hostView.game.mapSeed, guestView.game.mapSeed);
-  assert.deepEqual(hostView.game.owner, guestView.game.owner);
-  assert.deepEqual(hostView.players.map((p) => p.name), ['Ada', 'Grace']);
-  assert.notEqual(hostView.you, guestView.you);
+  assert.deepEqual(hostView.game.territories, guestView.game.territories);
+  assert.deepEqual([hostView.game.you, guestView.game.you], [0, 1]);
+  assert.equal(hostView.game.phase, 'place');
+  assert.ok(hostView.msLeft > 0);
+
+  guest.send({ t: 'submit', submission: { placements: [] } });
+  assert.match((await guest.next((m) => m.t === 'error')).message, /exactly/);
+
+  host.send({ t: 'submit', submission: castlePlacement(hostView) });
+  const waiting = await guest.next(isRoom((m) => m.game.players[0].ready));
+  assert.equal(waiting.game.phase, 'place');
+  assert.equal(waiting.game.submitted, null, 'the guest cannot see what the host sealed');
+  assert.equal(waiting.game.placements, null);
+
+  guest.send({ t: 'submit', submission: castlePlacement(guestView) });
+  const revealed = await host.next(isRoom((m) => m.game.phase === 'orders'));
+  assert.deepEqual(revealed.game.placements[1], castlePlacement(guestView).placements);
+
+  host.send({ t: 'submit', submission: { orders: [] } });
+  guest.send({ t: 'submit', submission: { orders: [] } });
+  const next = await guest.next(isRoom((m) => m.game.round === 2));
+  assert.deepEqual(next.game.lastRound.events, []);
   host.close();
   guest.close();
 });
 
-test('only the player whose turn it is can act, and everyone sees the result', async () => {
+test('a sealed move can be taken back until the phase resolves', async () => {
   const { host, guest, hostView } = await twoPlayerGame();
-  const game = hostView.game;
-  const [mover, waiter] = game.turn === 0 ? [host, guest] : [guest, host];
-  const mine = game.owner.indexOf(game.turn);
-
-  waiter.send({ t: 'action', action: { type: 'place', territory: game.owner.indexOf(1 - game.turn), count: 1 } });
-  assert.match((await waiter.next((m) => m.t === 'error')).message, /not your turn/i);
-
-  mover.send({ t: 'action', action: { type: 'place', territory: mine, count: 1 } });
-  const seen = await waiter.next(isRoom((m) => m.game.reinforcements === game.reinforcements - 1));
-  assert.equal(seen.game.armies[mine], game.armies[mine] + 1);
+  host.send({ t: 'submit', submission: castlePlacement(hostView) });
+  await guest.next(isRoom((m) => m.game.players[0].ready));
+  host.send({ t: 'retract' });
+  const view = await guest.next(isRoom((m) => !m.game.players[0].ready));
+  assert.equal(view.game.phase, 'place');
   host.close();
   guest.close();
 });
 
-test('a dropped player can rejoin with their token, and is played for meanwhile', async () => {
+test('a dropped player is played for after a grace period and can rejoin', async () => {
   const { host, guest, code, hostView } = await twoPlayerGame();
   const guestToken = guest.last('joined').token;
-  const guestSeat = 1;
   guest.close();
-  await host.next(isRoom((m) => !m.players[guestSeat].connected));
-
-  // Hand the turn to the absent guest if it is not theirs already.
-  if (hostView.game.turn !== guestSeat) {
-    const mine = hostView.game.owner.indexOf(0);
-    host.send({ t: 'action', action: { type: 'place', territory: mine, count: hostView.game.reinforcements } });
-    host.send({ t: 'action', action: { type: 'endPhase' } });
-    host.send({ t: 'action', action: { type: 'endPhase' } });
-  }
-  // After the grace period the server plays the guest's turn and play returns to the host.
-  await host.next(isRoom((m) => m.game.turn === 0 && m.game.round > hostView.game.round));
+  await host.next(isRoom((m) => !m.players[1].connected));
+  host.send({ t: 'submit', submission: castlePlacement(hostView) });
+  // The guest is gone, so the server seals for them once the grace period ends.
+  await host.next(isRoom((m) => m.game.phase === 'orders'));
 
   const back = client();
   await back.ready;
@@ -113,27 +121,40 @@ test('a dropped player can rejoin with their token, and is played for meanwhile'
   assert.equal((await back.next((m) => m.t === 'error')).code, 'norejoin');
   back.send({ t: 'rejoin', code, token: guestToken });
   const view = await back.next(isRoom());
-  assert.equal(view.players[guestSeat].connected, true);
-  assert.equal(view.you, view.players[guestSeat].id);
+  assert.equal(view.players[1].connected, true);
+  assert.equal(view.game.you, 1);
   host.close();
   back.close();
 });
 
-test('a host can play out a whole game against bots', async () => {
+test('bots with different strategies fill seats and play alongside a human', async () => {
   const host = client();
   await host.ready;
   host.send({ t: 'create', name: 'Solo' });
   await host.next((m) => m.t === 'joined');
   host.send({ t: 'start' });
   assert.match((await host.next((m) => m.t === 'error')).message, /two players/);
-  host.send({ t: 'addBot' });
-  host.send({ t: 'addBot' });
-  await host.next(isRoom((m) => m.players.length === 3));
+  host.send({ t: 'addBot', strategy: 'aggressive' });
+  host.send({ t: 'addBot', strategy: 'fortress' });
+  const lobby = await host.next(isRoom((m) => m.players.length === 3));
+  assert.match(lobby.players[1].name, /aggressive bot/);
+  assert.match(lobby.players[2].name, /fortress bot/);
   host.send({ t: 'start' });
-  await host.next(isRoom((m) => m.game));
-  // Leaving hands the seat to a bot; with no humans left the room is dropped.
-  host.send({ t: 'leave' });
-  host.send({ t: 'join', code: host.last('joined').code, name: 'Again' });
-  assert.match((await host.next((m) => m.t === 'error')).message, /No room/);
+  const start = await host.next(isRoom((m) => m.game));
+  assert.deepEqual(start.game.players.map((p) => p.ready), [false, true, true], 'bots seal at once');
+
+  // Hold every round; the bots do the fighting until the game ends.
+  let view = start;
+  for (let guard = 0; guard < 200 && !view.game.result; guard++) {
+    const alive = view.game.players[0].alive;
+    if (alive && view.game.submitted === null) {
+      host.send({ t: 'submit', submission: view.game.phase === 'place' ? castlePlacement(view) : { orders: [] } });
+    }
+    const before = `${view.game.round}:${view.game.phase}`;
+    view = await host.next(isRoom((m) => m.game.result || `${m.game.round}:${m.game.phase}` !== before));
+  }
+  assert.ok(view.game.result, 'the game finished');
+  host.send({ t: 'rematch' });
+  assert.equal((await host.next(isRoom((m) => !m.game))).players.length, 3);
   host.close();
 });

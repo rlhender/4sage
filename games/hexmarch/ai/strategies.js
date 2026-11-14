@@ -1,0 +1,175 @@
+// Computer players. A strategy sees exactly what a human or an LLM sees (the
+// observation from engine.observe) and returns the same JSON submission, so
+// every kind of player is interchangeable.
+//
+// One decision procedure, driven by a handful of weights and by exact battle
+// odds; the named personalities are just different weights, and tuning a
+// strategy means searching for better ones.
+
+import { captureOdds } from '../engine/odds.js';
+
+export const WEIGHTS = {
+  aggression: [0, 1], // how poor the odds can be before it will not attack
+  castleGuard: [0, 2], // garrison kept at the castle, as a multiple of nearby enemy armies
+  reserve: [0, 1], // garrison kept on other borders, as a share of the largest neighbour
+  commit: [0.3, 1], // share of its free armies sent on an attack
+  castleHunt: [0, 3], // extra value of capturing an enemy castle
+  islandFocus: [0, 3], // extra value of completing, or breaking up, an island
+};
+
+export const PRESETS = {
+  aggressive: { aggression: 0.9, castleGuard: 0.3, reserve: 0, commit: 1, castleHunt: 2, islandFocus: 0.5 },
+  balanced: { aggression: 0.6, castleGuard: 0.7, reserve: 0.2, commit: 0.9, castleHunt: 1, islandFocus: 1 },
+  fortress: { aggression: 0.3, castleGuard: 1.3, reserve: 0.5, commit: 0.7, castleHunt: 0.5, islandFocus: 1.5 },
+  passive: { aggression: 0, castleGuard: 1, reserve: 0.6, commit: 0.6, castleHunt: 0.3, islandFocus: 0.5 },
+};
+
+function survey(obs, w) {
+  const me = obs.you;
+  const T = obs.territories;
+  const mine = T.filter((t) => t.owner === me).map((t) => t.id);
+  const castle = obs.players[me].castle;
+  const others = (t) => T[t].adjacent.filter((n) => T[n].owner !== me);
+  const hostile = (t) => others(t).filter((n) => T[n].owner !== null); // neutrals never attack
+  const threat = (t) => hostile(t).reduce((sum, n) => sum + T[n].armies, 0);
+  const regionOf = new Map();
+  for (const region of obs.regions) for (const t of region.territories) regionOf.set(t, region);
+
+  // What a territory is worth capturing.
+  const value = (n) => {
+    let v = 1;
+    if (T[n].castleOf !== undefined) v += 3 * w.castleHunt;
+    const region = regionOf.get(n);
+    if (region.territories.every((t) => t === n || T[t].owner === me)) v += w.islandFocus * region.bonus;
+    else if (region.heldBy !== null && region.heldBy !== me) v += 0.5 * w.islandFocus * region.bonus;
+    return v;
+  };
+
+  // Armies that must stay home.
+  const keep = (t) => (t === castle
+    ? Math.max(1, Math.ceil(w.castleGuard * threat(t)))
+    : 1 + Math.floor(w.reserve * Math.max(0, ...hostile(t).map((n) => T[n].armies))));
+
+  return { me, T, mine, castle, others, hostile, threat, value, keep };
+}
+
+export function choosePlacements(obs, w) {
+  const { T, mine, castle, others, threat, value } = survey(obs, w);
+  let left = obs.income;
+  const placed = new Map();
+  const add = (t, n) => { if (n > 0) { placed.set(t, (placed.get(t) ?? 0) + n); left -= n; } };
+
+  // Guard the castle first, then stack where the best attack can be launched.
+  add(castle, Math.min(left, Math.max(0, Math.ceil(w.castleGuard * threat(castle)) - T[castle].armies)));
+  if (left > 0) {
+    let best = castle;
+    let bestScore = -1;
+    for (const t of mine) {
+      for (const n of others(t)) {
+        const score = value(n) * captureOdds(T[t].armies - 1 + left, T[n].armies).win;
+        if (score > bestScore) { bestScore = score; best = t; }
+      }
+    }
+    add(best, left);
+  }
+  return [...placed].map(([territory, armies]) => ({ territory, armies }));
+}
+
+export function chooseOrders(obs, w) {
+  const { me, T, mine, others, value, keep } = survey(obs, w);
+  const orders = [];
+  const minWin = 0.95 - 0.55 * w.aggression;
+  const free = new Map(mine.map((t) => {
+    const spare = Math.max(0, Math.min(T[t].armies - 1, T[t].armies - keep(t)));
+    return [t, Math.round(spare * w.commit)];
+  }));
+
+  // Attacks: repeatedly take the most valuable target it expects to win,
+  // pooling neighbouring territories until the odds are good enough.
+  const targets = [...new Set(mine.flatMap(others))];
+  for (;;) {
+    let best = null;
+    for (const n of targets) {
+      const sources = T[n].adjacent.filter((t) => (free.get(t) ?? 0) > 0).sort((a, b) => free.get(b) - free.get(a));
+      const used = [];
+      let force = 0;
+      let win = 0;
+      for (const t of sources) {
+        used.push(t);
+        force += free.get(t);
+        win = captureOdds(force, T[n].armies).win;
+        if (win >= 0.92) break;
+      }
+      if (win < minWin) continue;
+      const score = value(n) * win;
+      if (!best || score > best.score) best = { n, used, score };
+    }
+    if (!best) break;
+    for (const t of best.used) {
+      orders.push({ from: t, to: best.n, armies: free.get(t) });
+      free.set(t, 0);
+    }
+    targets.splice(targets.indexOf(best.n), 1);
+  }
+
+  // Moves: armies sitting behind the lines walk towards the nearest border.
+  const busy = new Set(orders.map((o) => o.from));
+  const border = new Set(mine.filter((t) => others(t).length > 0));
+  for (const t of mine) {
+    if (border.has(t) || busy.has(t) || T[t].armies < 2) continue;
+    const cameFrom = new Map([[t, null]]);
+    const queue = [t];
+    let goal = null;
+    for (let i = 0; i < queue.length && goal === null; i++) {
+      for (const n of T[queue[i]].adjacent) {
+        if (T[n].owner !== me || cameFrom.has(n)) continue;
+        cameFrom.set(n, queue[i]);
+        if (border.has(n)) { goal = n; break; }
+        queue.push(n);
+      }
+    }
+    if (goal === null) continue;
+    let step = goal;
+    while (cameFrom.get(step) !== t) step = cameFrom.get(step);
+    const spare = T[t].armies - keep(t);
+    if (spare > 0) orders.push({ from: t, to: step, armies: Math.min(spare, T[t].armies - 1) });
+  }
+  return orders;
+}
+
+// A legal but aimless player, as a baseline and for testing.
+function randomAgent(name, rand) {
+  const pick = (list) => list[Math.floor(rand() * list.length)];
+  return {
+    name,
+    place(obs) {
+      const mine = obs.territories.filter((t) => t.owner === obs.you);
+      return Array.from({ length: obs.income }, () => ({ territory: pick(mine).id, armies: 1 }));
+    },
+    order(obs) {
+      return obs.territories
+        .filter((t) => t.owner === obs.you && t.armies > 1 && rand() < 0.5)
+        .map((t) => ({ from: t.id, to: pick(t.adjacent), armies: 1 + Math.floor(rand() * (t.armies - 1)) }));
+    },
+  };
+}
+
+// An agent is { name, place(obs), order(obs) }. Build one from a preset name,
+// 'random', or a weights object.
+export function makeAgent(spec, name, rand = Math.random) {
+  if (spec === 'random') return randomAgent(name ?? 'random', rand);
+  const weights = typeof spec === 'string' ? PRESETS[spec] : spec;
+  if (!weights) throw new Error(`Unknown strategy "${spec}". Known: ${Object.keys(PRESETS).join(', ')}, random.`);
+  return {
+    name: name ?? (typeof spec === 'string' ? spec : 'custom'),
+    weights,
+    place: (obs) => choosePlacements(obs, weights),
+    order: (obs) => chooseOrders(obs, weights),
+  };
+}
+
+// The submission an agent makes for whatever phase the observation is in.
+// place() and order() may be async, so an LLM-backed agent fits the same shape.
+export function act(agent, obs) {
+  return obs.phase === 'place' ? { placements: agent.place(obs) } : { orders: agent.order(obs) };
+}

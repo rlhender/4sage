@@ -77,7 +77,7 @@ discoveries force reconsideration of higher-level choices.
 | `common/` | Shared design elements used across multiple systems |
 | `knowledge-base/` | Game design reference material, genre conventions, platform constraints |
 | `references/` | Research from existing games, engines, and methodologies |
-| `games/` | Playable games built in this repository — currently `hexmarch/`, an online multiplayer conquest game |
+| `games/` | Playable games built in this repository — currently `hexmarch/`, a simultaneous-turn conquest game with a headless engine that AI players can drive |
 
 ## Intellectual Foundations
 
