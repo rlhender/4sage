@@ -63,6 +63,14 @@ order is revealed and resolved together, in this sequence:
 
 There is no retreat: every fight goes to the end.
 
+### House rules
+
+The numbers above are the standard rules. A room can be created with
+different ones (castle strength, income, dice, what happens to a fallen
+player's land, and so on). Every view lists the rules in force under
+`rules`, the briefing names any that differ from standard, and
+`node cli/hexmarch.js rules` lists them all.
+
 ### Ending
 
 The game ends when one castle is left. It also ends after the last round
@@ -83,6 +91,7 @@ is neutral.
 {
   "you": 0,                      your seat
   "round": 3, "maxRounds": 40,
+  "rules": {...},                the rules in force
   "phase": "place",              "place", "orders" or "over"
   "income": 5,                   armies you must place this phase
   "submitted": null,             what you have sealed this phase, if anything
@@ -152,6 +161,8 @@ Seats named after a strategy (`aggressive`, `balanced`, `fortress`,
 `passive`, `tuned`, `random`) are bots and answer immediately. Any other
 name is an outside player; with more than one, pass `--seat`. `observe` and
 `submit` also return a `summary`: the latest events in plain English.
+`observe --brief` prints the text briefing instead: the same facts arranged
+for deciding, with every neighbour and the odds beside each territory.
 
 ### Odds
 

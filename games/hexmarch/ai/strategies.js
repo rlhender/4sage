@@ -6,7 +6,7 @@
 // odds; the named personalities are just different weights, and tuning a
 // strategy means searching for better ones.
 
-import { captureOdds } from '../engine/odds.js';
+import { captureOdds, clashOdds } from '../engine/odds.js';
 
 export const WEIGHTS = {
   aggression: [0, 1], // how poor the odds can be before it will not attack
@@ -15,13 +15,14 @@ export const WEIGHTS = {
   commit: [0.3, 1], // share of its free armies sent on an attack
   castleHunt: [0, 3], // extra value of capturing an enemy castle
   islandFocus: [0, 3], // extra value of completing, or breaking up, an island
+  counter: [0, 1], // readiness to meet a threatening neighbour on the border rather than wait for it
 };
 
 export const PRESETS = {
-  aggressive: { aggression: 0.9, castleGuard: 0.3, reserve: 0, commit: 1, castleHunt: 2, islandFocus: 0.5 },
-  balanced: { aggression: 0.6, castleGuard: 0.7, reserve: 0.2, commit: 0.9, castleHunt: 1, islandFocus: 1 },
-  fortress: { aggression: 0.3, castleGuard: 1.3, reserve: 0.5, commit: 0.7, castleHunt: 0.5, islandFocus: 1.5 },
-  passive: { aggression: 0, castleGuard: 1, reserve: 0.6, commit: 0.6, castleHunt: 0.3, islandFocus: 0.5 },
+  aggressive: { aggression: 0.9, castleGuard: 0.3, reserve: 0, commit: 1, castleHunt: 2, islandFocus: 0.5, counter: 0.5 },
+  balanced: { aggression: 0.6, castleGuard: 0.7, reserve: 0.2, commit: 0.9, castleHunt: 1, islandFocus: 1, counter: 0.3 },
+  fortress: { aggression: 0.3, castleGuard: 1.3, reserve: 0.5, commit: 0.7, castleHunt: 0.5, islandFocus: 1.5, counter: 0.2 },
+  passive: { aggression: 0, castleGuard: 1, reserve: 0.6, commit: 0.6, castleHunt: 0.3, islandFocus: 0.5, counter: 0 },
 };
 
 function survey(obs, w) {
@@ -79,13 +80,35 @@ export function choosePlacements(obs, w) {
 }
 
 export function chooseOrders(obs, w) {
-  const { me, T, mine, others, value, keep, odds } = survey(obs, w);
+  const { me, T, mine, others, hostile, value, keep, odds } = survey(obs, w);
   const orders = [];
   const minWin = 0.95 - 0.55 * w.aggression;
   const free = new Map(mine.map((t) => {
     const spare = Math.max(0, Math.min(T[t].armies - 1, T[t].armies - keep(t)));
     return [t, Math.round(spare * w.commit)];
   }));
+
+  // Counter-attacks: where a neighbour is strong enough to overrun this
+  // territory, march out and meet it on the border, where the fight is even,
+  // instead of defending with fewer dice. Worth it only if that neighbour
+  // really does attack, which is the gamble the weight controls.
+  if (w.counter > 0) {
+    for (const t of mine) {
+      const spare = free.get(t);
+      if (spare < 1) continue;
+      let pick = null;
+      for (const n of hostile(t)) {
+        const theirs = T[n].armies - 1;
+        if (theirs < 1 || odds(theirs, t) < 0.5) continue;
+        if (clashOdds(spare, theirs, obs.rules).aWins < 1 - w.counter) continue;
+        if (pick === null || T[n].armies > T[pick].armies) pick = n;
+      }
+      if (pick !== null) {
+        orders.push({ from: t, to: pick, armies: spare });
+        free.set(t, 0);
+      }
+    }
+  }
 
   // Attacks: repeatedly take the most valuable target it expects to win,
   // pooling neighbouring territories until the odds are good enough.

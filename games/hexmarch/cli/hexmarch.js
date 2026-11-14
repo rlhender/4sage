@@ -3,7 +3,8 @@
 // a file-based way to play a game one JSON submission at a time, which is how
 // an LLM (or a script, or a person) plays headless.
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { createGame, exportRecord, observe, submit } from '../engine/engine.js';
 import { captureOdds, clashOdds } from '../engine/odds.js';
@@ -12,7 +13,10 @@ import { briefing } from '../engine/briefing.js';
 import { describeEvent, describePlacements } from '../engine/report.js';
 import { PRESETS, act, makeAgent } from '../ai/strategies.js';
 import { simulate, tune } from '../ai/arena.js';
+import { CRITERIA, evaluateMaps, evaluateRules, randomSeeds } from '../ai/lab.js';
 import { TUNED_FILE, loadTuned } from '../ai/tuned.js';
+
+const MAPS_FILE = fileURLToPath(new URL('../balance/maps.json', import.meta.url));
 
 const HELP = `Hexmarch command line
 
@@ -38,6 +42,20 @@ const HELP = `Hexmarch command line
 
   odds <attackers> <defenders> [--clash]
       Exact odds of a fight to the death.
+
+  lab maps --seeds 1-30 | --random 30 [--games 300] [--players 3] [--strategy balanced] [--save]
+      Judge maps: identical players on each map, win rate by starting island.
+      --save writes the fair ones to balance/maps.json, which the server uses.
+
+  lab rules --rule key=value [--rule ...] [--games 400] [--adapt 8]
+      Compare a rule set with the standard rules on game-health measures.
+      --adapt re-tunes a strategy for the new rules first (generations).
+
+  lab sweep --name castleGarrison --values 3,5,8,12 [--games 300]
+      Try several values of one rule.
+
+  rules
+      List every rule that can be changed, with its default.
 
 Strategies: ${Object.keys(PRESETS).join(', ')}, random (plus "tuned" after running tune).
 Rules and JSON formats: see PLAYING.md.`;
@@ -117,7 +135,114 @@ function view(game, seat) {
   return { ...obs, summary };
 }
 
+// Fixed-width text table from rows of cells.
+function table(rows) {
+  const width = rows[0].map((_, i) => Math.max(...rows.map((r) => String(r[i]).length)));
+  return rows.map((r) => r.map((cell, i) => String(cell).padEnd(width[i])).join('  ').trimEnd()).join('\n');
+}
+
+const pct = (x) => `${Math.round(x * 100)}%`;
+const METRIC_ROWS = [
+  ['averageRounds', 'average rounds', (x) => x.toFixed(1)],
+  ['stalemateRate', 'reach the round limit', pct],
+  ['blowoutRate', 'over within 3 rounds', pct],
+  ['snowball', 'round-3 leader wins', pct],
+  ['leadChanges', 'lead changes a game', (x) => x.toFixed(1)],
+  ['clashesPerGame', 'border clashes a game', (x) => x.toFixed(1)],
+  ['attackerSuccess', 'attacks that capture', pct],
+  ['firstElimination', 'first castle falls (round)', (x) => x.toFixed(1)],
+  ['dominance', 'best strategy win rate', pct],
+  ['turtleRate', 'passive win rate', pct],
+];
+
+// Metrics for several rule sets side by side, with failed checks marked.
+function compare(columns) {
+  const rows = [['', ...columns.map((c) => c.label)]];
+  for (const [key, label, format] of METRIC_ROWS) {
+    if (columns.every((c) => c.result.metrics[key] === undefined)) continue;
+    rows.push([label, ...columns.map((c) => `${format(c.result.metrics[key])}${c.result.failed.includes(key) ? ' !' : ''}`)]);
+  }
+  const names = Object.keys(columns[0].result.metrics.winRates);
+  for (const name of names) rows.push([`  ${name} wins`, ...columns.map((c) => pct(c.result.metrics.winRates[name] ?? 0))]);
+  rows.push(['checks failed', ...columns.map((c) => c.result.failed.length || 'none')]);
+  return `${table(rows)}\n\n! marks a value outside the limits in ai/lab.js (CRITERIA).`;
+}
+
+function seedList(args) {
+  if (args.random) return randomSeeds(Number(args.random), number(args.seed, 1));
+  const text = String(args.seeds ?? '1-20');
+  if (text.includes('-')) {
+    const [from, to] = text.split('-').map(Number);
+    return Array.from({ length: to - from + 1 }, (_, i) => from + i);
+  }
+  return text.split(',').map(Number);
+}
+
+const lab = {
+  maps(args) {
+    const options = { games: number(args.games, 300), players: number(args.players, 3), strategy: args.strategy ?? 'balanced', rules: rulesFrom(args), seed: number(args.seed, 1) };
+    const results = evaluateMaps({ seeds: seedList(args), ...options, onMap: (r) => process.stderr.write(`map ${r.mapSeed}: ${r.verdict}\n`) });
+    if (args.save) {
+      const fair = results.filter((r) => r.verdict === 'fair').map((r) => r.mapSeed);
+      mkdirSync(path.dirname(MAPS_FILE), { recursive: true });
+      writeFileSync(MAPS_FILE, `${JSON.stringify({ settings: options, fair, judged: results.map((r) => ({ mapSeed: r.mapSeed, verdict: r.verdict, largestDeviation: r.largestDeviation })) }, null, 2)}\n`);
+    }
+    if (args.json) { console.log(JSON.stringify(results)); return; }
+    const best = (r) => r.islands.reduce((a, b) => (b.winRate > a.winRate ? b : a));
+    const worst = (r) => r.islands.reduce((a, b) => (b.winRate < a.winRate ? b : a));
+    console.log(table([
+      ['map', 'verdict', 'deviation', 'best start', 'worst start', 'rounds', 'blowouts', 'stalemates'],
+      ...[...results].sort((a, b) => a.largestDeviation - b.largestDeviation).map((r) => [
+        r.mapSeed, r.verdict, r.largestDeviation.toFixed(1),
+        `${best(r).island} ${pct(best(r).winRate)}`, `${worst(r).island} ${pct(worst(r).winRate)}`,
+        r.metrics.averageRounds.toFixed(1), pct(r.metrics.blowoutRate), pct(r.metrics.stalemateRate),
+      ]),
+    ]));
+    const count = (v) => results.filter((r) => r.verdict === v).length;
+    console.log(`\n${results.length} maps, ${options.players} identical ${options.strategy} players, ${options.games} games each. An even share is ${pct(results[0].evenShare)}.`);
+    console.log(`fair ${count('fair')}, uneven ${count('uneven')}, skewed ${count('skewed')}. Deviation is the largest gap between a starting island's win rate and an even share, in standard errors: under 2 is fair, 3 or more is skewed.`);
+    if (args.save) console.log(`Saved the fair maps to ${path.relative(process.cwd(), MAPS_FILE)}.`);
+  },
+
+  rules(args) {
+    const options = { games: number(args.games, 400), seed: number(args.seed, 1), adapt: number(args.adapt, 0) };
+    const variant = rulesFrom(args);
+    if (!Object.keys(variant).length) die('Give at least one --rule key=value to compare with the standard rules.');
+    const columns = [
+      { label: 'standard', result: evaluateRules({ ...options }) },
+      { label: Object.entries(variant).map(([k, v]) => `${k}=${v}`).join(' '), result: evaluateRules({ ...options, rules: variant }) },
+    ];
+    if (args.json) { console.log(JSON.stringify(columns)); return; }
+    console.log(compare(columns));
+    for (const c of columns) if (c.result.adapted) console.log(`adapted strategy under ${c.label}: ${JSON.stringify(c.result.adapted)}`);
+  },
+
+  sweep(args) {
+    const rule = RULES[args.name];
+    if (!rule || typeof args.values !== 'string') die('Usage: lab sweep --name <rule> --values a,b,c');
+    const options = { games: number(args.games, 300), seed: number(args.seed, 1), adapt: number(args.adapt, 0) };
+    const columns = args.values.split(',').map((raw) => {
+      const value = rule.options ? raw : Number(raw);
+      return { label: `${args.name}=${value}${value === rule.default ? ' (standard)' : ''}`, result: evaluateRules({ ...options, rules: { ...rulesFrom(args), [args.name]: value } }) };
+    });
+    console.log(args.json ? JSON.stringify(columns) : compare(columns));
+  },
+};
+
 const commands = {
+  lab(args) {
+    const run = lab[args._[1]];
+    if (!run) die('Usage: lab maps | lab rules | lab sweep. See "help".');
+    run(args);
+  },
+
+  rules() {
+    console.log(table([['rule', 'default', 'allowed', 'meaning'], ...Object.entries(RULES).map(([key, r]) => [
+      key, r.default, r.options ? r.options.join(' | ') : `${r.min} to ${r.max}`, r.doc,
+    ])]));
+    console.log(`\nHealth limits used by the lab: ${Object.entries(CRITERIA).map(([k, c]) => `${k} ${[c.min !== undefined ? `>= ${c.min}` : '', c.max !== undefined ? `<= ${c.max}` : ''].filter(Boolean).join(' and ')}`).join('; ')}.`);
+  },
+
   simulate(args) {
     if (typeof args.players !== 'string') die('Give the strategies with --players, for example aggressive,fortress,balanced.');
     console.log(pretty(simulate({

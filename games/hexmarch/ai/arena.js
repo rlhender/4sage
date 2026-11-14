@@ -60,7 +60,7 @@ export function tune({ start = PRESETS.balanced, generations = 10, games = 60, s
   const rand = rng32(seed);
   const mutate = (weights) => Object.fromEntries(Object.entries(WEIGHTS).map(([key, [lo, hi]]) => {
     const nudge = (rand() + rand() + rand() - 1.5) * 0.35 * (hi - lo);
-    return [key, Math.round(Math.min(hi, Math.max(lo, weights[key] + nudge)) * 100) / 100];
+    return [key, Math.round(Math.min(hi, Math.max(lo, (weights[key] ?? 0) + nudge)) * 100) / 100];
   }));
   const fitness = (weights, generation) => {
     let wins = 0;

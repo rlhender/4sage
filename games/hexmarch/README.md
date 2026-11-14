@@ -5,16 +5,23 @@ once**. Each round all players place their new armies, then seal secret
 attack orders that are revealed and resolved together. Each player has a
 castle; lose it and you are out.
 
-The game is built so that an AI can play it as readily as a person:
+It is built so that an AI can play as readily as a person, and so that AIs
+can be used to find out which maps and rules make a good game:
 
 - the **engine** runs headless and deterministically, and a whole game is
   plain JSON;
-- every player (the browser GUI, a built-in strategy, a script, a large
-  language model) sees the same JSON view and sends the same JSON moves;
-- complete games between AI strategies run by the thousand from the command
-  line, and strategies improve themselves by repeated play.
+- people play in the browser; **any AI** takes a seat over plain HTTP or
+  MCP, with no dependence on a model, vendor or agent framework;
+- built-in strategies play complete games by the thousand, improve by
+  self-play, and feed a **balance lab** that judges maps and rule sets.
 
-The rules and the JSON interface are in [PLAYING.md](PLAYING.md).
+| Read this | For |
+|-----------|-----|
+| [PLAYING.md](PLAYING.md) | the rules and the JSON formats |
+| [AGENTS.md](AGENTS.md) | connecting an AI player (HTTP or MCP) |
+| [BALANCE.md](BALANCE.md) | how maps and rules are judged, and findings so far |
+| [deploy/README.md](deploy/README.md) | putting it on a server |
+| [PLAN.md](PLAN.md) | what is built, what is next, and why it is built this way |
 
 It lives in this repository as a self-contained project: nothing outside
 `games/hexmarch/` depends on it.
@@ -26,52 +33,68 @@ Requires Node.js 20 or newer.
 ```
 cd games/hexmarch
 npm install
-npm start          # the browser game, on http://localhost:3000
+npm start          # http://localhost:3000
 npm test
 ```
 
 In the browser, create a room, share the four-letter code or invite link,
-and add bots of whichever strategy you like from the lobby.
-
-## Headless play
+and add bots from the lobby. An AI joins the same room with the code:
 
 ```
-# 500 complete games between three strategies, with win rates
-node cli/hexmarch.js simulate --players aggressive,fortress,balanced --games 500
+node examples/http-agent.js --server http://localhost:3000 --room CODE
+```
 
-# improve a strategy by self-play and save it as the "tuned" strategy
+Set `DATA_DIR=./data` to keep games across restarts.
+
+## Headless
+
+```
+node cli/hexmarch.js help
+
+# 500 complete games between strategies, with win rates
+node cli/hexmarch.js simulate --players aggressive,fortress,balanced,tuned --games 500
+
+# improve a strategy by self-play; saved as the "tuned" strategy
 node cli/hexmarch.js tune --generations 12 --games 90
 
-# play one game a JSON move at a time (how an LLM plays)
+# judge rules and maps
+node cli/hexmarch.js lab rules --rule castleGarrison=8
+node cli/hexmarch.js lab maps --seeds 1-30 --save
+
+# play one game a JSON move at a time, with no server
 node cli/hexmarch.js new --file game.json --players you,aggressive,fortress
-node cli/hexmarch.js observe --file game.json
+node cli/hexmarch.js observe --file game.json --brief
 node cli/hexmarch.js submit --file game.json --json '{"placements":[...]}'
 ```
-
-`node cli/hexmarch.js help` lists every command.
 
 ## Layout
 
 | Path | What's here |
 |------|-------------|
-| `engine/engine.js` | The rules. Pure functions over a JSON state: `createGame`, `submit`, `observe`, `exportRecord`, `replay`. No I/O, no GUI. |
+| `engine/engine.js` | The rules. Pure functions over a JSON state: `createGame`, `submit`, `observe`, `exportRecord`, `replay`. No I/O. |
+| `engine/rules.js` | Every tunable rule and its default. |
 | `engine/map.js` | Deterministic map generator; a seed fully describes a map. |
 | `engine/odds.js` | Exact win chances and expected survivors for any fight. |
-| `engine/report.js` | Turns round events into plain English. |
-| `ai/strategies.js` | Computer players: one decision procedure driven by six weights, with named personalities. |
-| `ai/arena.js` | Plays whole games between agents, mass simulation, and self-play tuning. |
-| `ai/tuned.json` | The weights found by the last `tune` run. |
+| `engine/briefing.js` | A player's view as text arranged for deciding; what AI players read. |
+| `engine/report.js` | Round events in plain English. |
+| `ai/strategies.js` | Computer players: one decision procedure driven by seven weights. |
+| `ai/arena.js` | Whole games between agents, mass simulation, self-play tuning. |
+| `ai/lab.js` | The balance lab: game-health measures for rules and maps. |
+| `ai/tuned.json`, `balance/maps.json` | Results of the last tuning run and the maps judged fair. |
 | `cli/hexmarch.js` | Command line for all of the above. |
-| `server/server.js` | Web server and WebSocket rooms. Holds no rules: it passes sealed moves to the engine. |
+| `server/rooms.js` | Rooms, seats and timers, independent of how players connect. |
+| `server/server.js`, `api.js`, `mcp.js`, `store.js` | Web server and WebSocket, HTTP API, MCP endpoint, saving to disk. |
 | `client/` | Browser GUI: plain ES modules and SVG, no build step. |
-| `test/` | `node:test` suites for the engine, the AI, the CLI and the server. |
+| `examples/`, `skill/` | A complete outside player in one file; a skill file for harnesses that load them. |
+| `deploy/` | systemd unit, proxy examples and a hosting guide. |
+| `test/` | `node:test` suites for the engine, AI, lab, CLI, server, API and MCP. |
 
-## AI players
+## Computer players
 
-A strategy is an object with `place(view)` and `order(view)`. The built-in
-ones share one procedure that values targets, checks exact odds, and attacks
-when the chance of success clears a threshold. Their personalities are only
-different weights:
+A strategy is an object with `place(view)` and `order(view)`; it sees what
+any player sees. The built-in ones share one procedure that values targets,
+checks exact odds, and attacks when the chance of success clears a
+threshold. Their personalities are only different weights:
 
 | Weight | Meaning |
 |--------|---------|
@@ -81,31 +104,25 @@ different weights:
 | `commit` | share of its free armies sent on an attack |
 | `castleHunt` | extra value placed on enemy castles |
 | `islandFocus` | extra value placed on completing or breaking up islands |
+| `counter` | readiness to meet a threatening neighbour on the border |
 
 `aggressive`, `balanced`, `fortress` and `passive` are fixed presets.
-`tuned` is found by `tune`: each generation, mutated copies of the current
-champion play the same games against the presets, and the best performer
-becomes the next champion.
-
-`place` and `order` may be asynchronous, so an agent backed by an LLM API
-has the same shape. None is included yet.
+`tuned` is found by self-play: each generation, mutated copies of the
+champion play the same games against the presets and the best becomes the
+next champion.
 
 ## Server behaviour
 
-- Each phase has a time limit (three minutes by default). When it runs out,
-  the server seals a move for anyone who has not, using the balanced strategy.
-- A player who disconnects keeps their seat and can rejoin from the same
-  browser. If everyone still to move has disconnected, the wait is shortened.
+- Each phase has a time limit (three minutes by default; the host can
+  change it per room). When it runs out the server seals a move for anyone
+  who has not.
+- A browser player who disconnects keeps their seat and can rejoin. If
+  everyone still to move has disconnected, the wait is shortened.
 - Leaving a game on purpose hands the seat to a bot.
-- Rooms with no connected players are removed after 30 minutes. Nothing is
-  saved to disk, so restarting the server ends every game.
+- With `DATA_DIR` set, rooms are saved on every change and restored at
+  start, and each finished game is filed as a replayable record.
+- Rooms nobody has touched for a while are removed.
 
-Settings are environment variables: `PORT` (3000), `PHASE_MS` (180000),
-`GRACE_MS` (30000), `BOT_DELAY_MS` (1500), `ROOM_TTL_MS` (1800000).
-
-## Deploying
-
-Any host that runs a long-lived Node process and allows WebSocket connections
-will do. Run `npm install --omit=dev` and `npm start`, and route HTTP and
-WebSocket traffic to `PORT`. Run a single instance: rooms live in that
-process's memory.
+Settings are environment variables: `PORT` (3000), `HOST`, `DATA_DIR`,
+`PHASE_MS` (180000), `GRACE_MS` (30000), `BOT_DELAY_MS` (1500),
+`ROOM_TTL_MS` (1800000).

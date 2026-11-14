@@ -15,10 +15,10 @@ and anyone (a person or another model) can pick the work up from here.
 
 _Update this section at the end of every working session._
 
-- Milestones 0 to 5 are built, tested and pushed.
-- The deployment files are checked only as far as a clean production install, start and full game on Linux; nobody has yet run them on a real VPS.
-- Still to do: the balance lab (6) and the agent kit's skill file (7).
-- Next up: milestone 6.
+- Milestones 0 to 7 are built, tested (40 tests) and pushed.
+- The deployment files are checked only as far as a clean production install, start and full game on Linux; nobody has yet run them on a real VPS. That is the owner's next step (milestone 5, last item).
+- The balance lab has produced first findings (see `BALANCE.md`). Three of them change what should be built next, and now head the "Later" list.
+- Nothing is in progress. Next up: the first open item under "Later".
 
 ## What the owner asked for
 
@@ -126,28 +126,37 @@ So rule sets can be compared without touching code.
 
 ### 6. Balance lab
 
-- [ ] MH `ai/lab.js` game-health metrics: length, stalemates, early blowouts,
+- [x] MH `ai/lab.js` game-health metrics: length, stalemates, early blowouts,
       snowballing, lead changes, clashes per game, attacker success, win rate
       by strategy
-- [ ] MH Map evaluation: mirror matches on one map; win rate by starting
+- [x] MH Map evaluation: mirror matches on one map; win rate by starting
       island with error bars; verdict fair or skewed; structural facts
-- [ ] MH Rules evaluation: baseline against a variant, and sweeps of one rule
-- [ ] SH Strategies re-tuned for a variant before judging it (`--adapt`)
-- [ ] SH Vetted map list (`balance/maps.json`) that the server draws from
-- [ ] MH Command line: `lab maps`, `lab rules`, `lab sweep`
-- [ ] MH `BALANCE.md`: how to run it, what the numbers mean, findings so far
+- [x] MH Rules evaluation: baseline against a variant, and sweeps of one rule
+- [x] SH Strategies re-tuned for a variant before judging it (`--adapt`)
+- [x] SH Vetted map list (`balance/maps.json`) that the server draws from
+- [x] MH Command line: `lab maps`, `lab rules`, `lab sweep`
+- [x] MH `BALANCE.md`: how to run it, what the numbers mean, findings so far
 
 ### 7. Agent kit
 
 - [x] MH `examples/http-agent.js`: a complete outside player in one file,
       usable as a template for any language or model
 - [x] MH `AGENTS.md`: connect an AI by HTTP or MCP, with copy-paste examples
-- [ ] SH `skill/hexmarch-player/SKILL.md` for harnesses that load skills
+- [x] SH `skill/hexmarch-player/SKILL.md` for harnesses that load skills
 
 ## Later
 
 In rough order of value. None of these is started.
 
+- [ ] MH Make border clashes happen in bot play. The lab finds about one
+      clash in ten games, so the game's central mechanic is untested. Teach
+      strategies to anticipate an attack and answer it; if clashing is still
+      never worth it, give the rule a reason (see `BALANCE.md`)
+- [ ] MH Level the starting islands. Small corner islands are the best
+      start on 24 of 30 maps; fix it in the map generator or in where
+      castles may be placed, then re-judge maps
+- [ ] SH Adopt `castleGarrison=8` as standard if it still looks best after
+      re-measuring, and re-run every comparison against it
 - [ ] SH An LLM-backed seat run by the server itself (needs an API key and a
       provider choice from the owner; today an LLM plays from outside)
 - [ ] SH Feed finished human games into the lab, to compare with bot results
@@ -168,6 +177,10 @@ In rough order of value. None of these is started.
 - When a castle falls the loser's other land turns neutral. The lab can
   compare this with handing it to the captor; which do you prefer to play?
 - Should the server be open to anyone who has the address, or need a key?
+- Games between bots average 22 rounds under the standard rules. Is that
+  the length you want, or should the rules aim for something shorter?
+- Border clashes are rare in bot play. Is the clash meant to be common, or
+  an occasional event?
 
 ## Working conventions
 
