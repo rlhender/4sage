@@ -387,7 +387,7 @@ test('the briefing alone is enough to make a legal move in each phase', () => {
       assert.match(text, new RegExp(`you: ${p.name} \\(seat ${seat}\\)`));
       if (text.includes('"placements"')) {
         const income = Number(text.match(/place exactly (\d+) new armies/)[1]);
-        const castle = Number(text.match(/#(\d+) [^:]+ \(YOUR CASTLE\)/)[1]);
+        const castle = Number(text.match(/^#(\d+) [^:\n]+ \(YOUR CASTLE\)/m)[1]);
         assert.ok(submit(state, seat, { placements: [{ territory: castle, armies: income }] }).ok);
       } else {
         assert.match(text, /"orders"/);
