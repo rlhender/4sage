@@ -1,7 +1,7 @@
 # Balance
 
-How Hexmarch uses its computer players to judge maps and rules, and what
-that has shown so far.
+How Hexmarch uses its computer players to judge maps and rules, what that
+has shown, and what was changed because of it.
 
 ## Method
 
@@ -13,13 +13,13 @@ as a reason to look, and a pass as "no obvious problem", not as proof.
 ### Judging rules
 
 A mixed field (aggressive, balanced, fortress, passive) plays on random
-maps under a rule set. The same games are played under the standard rules
-for comparison.
+maps under a rule set, and the same games are played under the standard
+rules for comparison.
 
 | Measure | Meaning | Healthy |
 |---------|---------|---------|
 | average rounds | game length | 6 to 25 |
-| reach the round limit | nobody won by conquest: a stalemate | at most 10% |
+| reach the round limit | nobody won outright: a stalemate | at most 10% |
 | over within 3 rounds | decided before anyone could respond | at most 10% |
 | round-3 leader wins | snowballing: the rest of the game is a formality | at most 75% |
 | best strategy win rate | one way of playing dominates (even share is 25%) | at most 55% |
@@ -44,91 +44,130 @@ quarter of perfectly fair maps would be called uneven by chance, so only
 ```
 node cli/hexmarch.js rules                                   # every rule and its default
 node cli/hexmarch.js lab rules --rule fallenLand=captor      # one variant against standard
-node cli/hexmarch.js lab sweep --name castleGarrison --values 3,5,8,12
-node cli/hexmarch.js lab maps --seeds 1-30 --games 400 --save
+node cli/hexmarch.js lab sweep --name castleGarrison --values 5,8,12
+node cli/hexmarch.js lab maps --seeds 1-60 --save
 node cli/hexmarch.js lab rules --rule castleDefence=1 --adapt 8   # re-tune a strategy for the variant first
 ```
 
 `--save` writes the fair maps to `balance/maps.json`; the server deals new
 games only from that list when it exists. Add `--json` for raw results.
 
-## Findings so far
+## What the lab changed
 
-Run on 2026-11-14 with the strategies as tuned that day. 400 games per
-column. Re-run after any change to rules or strategies; these numbers go
-stale.
+The first version of the rules was measured on 2026-11-14, found wanting in
+three ways, and changed. Design aims, set on the owner's behalf: a game of
+roughly 12 to 18 rounds, few stalemates, no start that is clearly better
+than another, and more than one way to win.
 
-### Rules
+| | first rules | standard rules now |
+|---|---|---|
+| average rounds (mixed field) | 21.7 | 17.2 |
+| average rounds (with the tuned strategy) | 17.3 | 14.4 |
+| reach the round limit | 10% | 3% |
+| over within 3 rounds | 0% | 0% |
+| round-3 leader wins | 56% | 56% |
+| maps judged fair / skewed | 9 / 9 of 30 | 36 / 5 of 60 |
+| win rate by starting island, 4 players (even share 25%) | 17% to 31% | 23% to 29% |
 
-| | standard | castleGarrison 8 | castleDefence 1 | fallenLand captor | castleIncome 2 |
+Mixed field: 400 games, four strategies, random maps. Maps: three identical
+players, 300 to 400 games a map.
+
+### 1. Games were too long and too often stalemates
+
+Under the first rules the last castle had to fall. Games averaged 22 rounds
+and one in ten ran to the round limit, mostly two survivors grinding
+through neutral land.
+
+- **Added a second way to win: hold 65% of the territories at the end of a
+  round** (`dominationShare`). It ends games that are already decided.
+  At 55% most games ended this way and castles hardly mattered; at 65%,
+  with the tuned strategy in the field, 57% of games end with the last
+  castle and 39% by domination, so both are live.
+- **Castles start with 8 armies instead of 5** (`castleGarrison`). Fewer
+  stalemates (8% to 3%) at no cost in length.
+
+### 2. Where you started mattered too much
+
+On the first maps a castle on some islands won far more often than on
+others: in four-player games, 17% from the worst island and 31% from the
+best, against an even share of 25%. Of 24 maps, 23 were skewed.
+
+The cause was the sea lanes. Islands were joined to their nearest
+neighbours, which left the map a tree: islands at the ends had a single way
+in and were natural fortresses (about 1.3 lanes on average for the best
+starting islands, about 2 for the worst). Island size, bonus and position
+each made a smaller difference, and making the islands equal in size did
+not help.
+
+- **Islands are now joined in a ring** (`seaLanes`), so each has exactly
+  two ways in. Win rate by starting island is now 31% to 35% with three
+  players and 23% to 29% with four.
+- **The two smallest islands sit in the middle of the map**
+  (`smallIslands`), not in the corners.
+- The server deals only from the 36 maps judged fair
+  (`balance/maps.json`).
+
+### 3. Border clashes are rare, and that is accepted for now
+
+A border clash needs two players to attack each other across the same
+border in the same round. In bot play that happens in about one game in
+fifteen. Three things were tried:
+
+- A counter-attack habit for the strategies: no change.
+- Strategies that guess the opponents' orders and plan against them
+  (`foresight`): self-play tuning kept the foresight in every run (0.5 to
+  1.0), so it helps. The readiness to counter-attack came out anywhere
+  from 0 to 0.5 across three runs, which means it makes no consistent
+  difference to winning, and clashes stayed as rare whatever it was.
+- The reason is in the arithmetic. Army counts are public and fights go to
+  the end, so the weaker side of a border knows it is weaker and loses its
+  whole force if it attacks. Holding is right, so the two rarely meet.
+
+Decision: keep the clash as it is, and **reward it when it happens: the
+winner's survivors add 1 to their highest die in the battle that follows**
+(`clashMomentum`). This cannot be measured with clashes this rare; it is a
+judgement that a won field battle should matter. Whether people clash more
+than bots is the open question, and finished games on the server are
+recorded so that it can be answered.
+
+## Rule variants against the standard rules
+
+400 games each, mixed field.
+
+| | standard | fallen land to captor | castle defence +1 | no domination win | nearest-neighbour lanes |
 |---|---|---|---|---|---|
-| average rounds | 22.0 | 22.4 | 26.3 ✗ | 10.4 | 18.0 |
-| reach the round limit | 9% | 7% | 13% ✗ | 2% | 10% |
-| over within 3 rounds | 0% | 0% | 0% | 5% | 8% |
-| round-3 leader wins | 57% | 47% | 44% | 76% ✗ | 62% |
-| lead changes a game | 1.3 | 1.5 | 1.6 | 0.8 | 1.0 |
-| first castle falls (round) | 4.2 | 5.1 | 8.0 | 4.2 | 2.6 |
-| best strategy win rate | 39% | 36% | 38% | 49% | 34% |
-| border clashes a game | 0.0 | 0.0 | 0.1 | 0.1 | 0.0 |
+| average rounds | 17.2 | 7.9 | 19.1 | 19.3 | 17.8 |
+| reach the round limit | 3% | 1% | 6% | 4% | 5% |
+| over within 3 rounds | 0% | 8% | 0% | 0% | 0% |
+| round-3 leader wins | 56% | 73% | 47% | 56% | 55% |
+| lead changes a game | 1.3 | 0.9 | 1.5 | 1.3 | 1.3 |
+| best strategy win rate | 39% | 46% | 40% | 38% | 43% |
+| passive win rate | 8% | 2% | 7% | 8% | 12% |
 
-1. **The standard rules pass every check, but only just on length.** Games
-   average 22 rounds (44 decisions a player) and 9% hit the round limit.
-2. **Border clashes almost never happen between bots**: about one game in
-   ten has one. A clash needs two players to attack each other across the
-   same border in the same round, and the bots attack where they are
-   strong, not where they are threatened. Giving them a counter-attack
-   option did not change this. So the mechanic the game is built around is
-   not yet being exercised or tested by bot play. Whether people would
-   clash more is unknown.
-3. **Handing a fallen player's land to the captor is bad as it stands.**
-   Games halve in length, but the early leader wins 76% of the time and the
-   aggressive strategy takes 49%.
-4. **A castle defence bonus is bad as it stands.** It delays the first
-   elimination from round 4 to round 8 and pushes stalemates to 13%.
-5. **A larger starting castle garrison looks good.** At 8 the early leader
-   wins less often (47% against 57%) and there are more lead changes, at no
-   cost in length or stalemates. This is the best candidate for a change to
-   the standard rules.
-6. **Castle income shortens games but brings early knockouts** (8% over
-   within three rounds, first castle down by round 2.6).
-7. `clashTies` makes no measurable difference, because of finding 2.
-
-### Maps
-
-Thirty maps (seeds 1 to 30), three identical balanced players, 400 games
-each: **9 fair, 12 uneven, 9 skewed.**
-
-- **Starting on a small corner island is an advantage on almost every
-  map.** Frostmere and Duskmarch (five territories each, at opposite
-  corners) are the best start on 24 of the 30 maps, winning 36% to 46%
-  where an even share is 33%. The worst start is nearly always one of the
-  four larger islands (Ashen Reach on 10 maps, Verdant Coil 8, Sunspire 6,
-  Stormcradle 4), at 14% to 28%. A small island is quick to complete for
-  its bonus and has few ways in.
-- This is a property of the map generator, not of particular seeds, so
-  picking fair seeds only reduces it. The 9 fair seeds are saved and used
-  by the server for now.
-- Three-player mirror games are much shorter than the mixed four-player
-  field (about 9.3 rounds) and 5% to 14% of them are over within three
-  rounds, close to or above the limit.
+- **Handing a fallen player's land to the captor** makes games very short
+  and nearly decides them at the first castle: rejected.
+- **A castle defence bonus** now passes every check and gives the most
+  comebacks (the early leader wins 47%, against 56%), for two more rounds.
+  It is the most promising change not yet made.
+- Other things tried and not adopted: more income (`minIncome=4`: more
+  comebacks but about three rounds longer), one die for defenders (faster,
+  fewer lead changes), two dice for attackers (17% stalemates).
 
 ## What to try next
 
-- Make clashes happen: teach the strategies to expect an attack and answer
-  it, then see whether clashing is ever the better choice. If it is not,
-  the rule may need a reason to clash (for example, a clash winner fighting
-  the garrison at an advantage).
-- Level the starting islands: scale island bonuses by how defensible an
-  island is, give small islands more sea lanes, or forbid castles on them.
-- Adopt `castleGarrison=8` and re-measure everything against it.
-- Repeat the rule comparisons with strategies re-tuned for each variant
-  (`--adapt`), and at two, three, five and six players.
+- `castleDefence=1` with the strategies re-tuned for it (`--adapt`).
+- Everything at two, five and six players; so far only three and four.
 - Compare with real games: finished games on the server are filed in
-  `DATA_DIR/records` in the same replayable format.
+  `DATA_DIR/records` in the same replayable format. In particular, how
+  often people clash.
+- A retreat rule (an attack breaks off at half strength). Attacks would no
+  longer be all or nothing, which may be what makes clashes worth having.
 
 ## Limits of this evidence
 
-- The players are simple heuristics. A rule that looks fine against them
-  may break against people or stronger AIs, and the reverse.
-- The strategies were tuned under the standard rules, which favours them.
+- The players are heuristics. A rule that looks fine against them may break
+  against people or stronger AIs, and the reverse.
+- The fixed personalities were written for the first rules; only `tuned`
+  has been re-tuned for the current ones.
 - All results are for random deals; nobody chooses their castle.
+- Numbers go stale. Re-run after any change to rules or strategies.

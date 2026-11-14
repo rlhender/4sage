@@ -6,26 +6,34 @@
 //   place  — everyone seals where their new armies go; revealed together.
 //   orders — everyone seals attack and move orders; resolved together.
 
-import { generateMap } from './map.js';
-import { resolveRules } from './rules.js';
+import { generateMap, shapeKey } from './map.js';
+import { DEFAULT_RULES, resolveRules } from './rules.js';
 
-export const VERSION = 1;
+export const VERSION = 2;
 export const NEUTRAL = -1;
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 6;
 
 const START_ARMIES = { 2: 36, 3: 31, 4: 26, 5: 22, 6: 18 };
 
+// A map is fully described by its seed and the map-shaping rules.
 const maps = new Map();
-export function getMap(seed) {
-  let map = maps.get(seed);
+export function getMap(seed, rules = DEFAULT_RULES) {
+  const shape = { smallIslands: rules.smallIslands, islandSizes: rules.islandSizes, seaLanes: rules.seaLanes };
+  const key = `${seed}:${shapeKey(shape)}`;
+  let map = maps.get(key);
   if (!map) {
     if (maps.size > 200) maps.clear();
-    map = generateMap(seed);
-    maps.set(seed, map);
+    map = generateMap(seed, shape);
+    maps.set(key, map);
   }
   return map;
 }
+const mapOf = (state) => getMap(state.config.mapSeed, state.config.rules);
+
+// What holding a whole island pays each round under these rules.
+export const islandBonus = (region, rules) =>
+  Math.round(Math.max(1, region.territories.length + rules.islandBonusBase) * rules.islandBonus);
 
 // ---------- randomness (kept in the state so games replay exactly) ----------
 
@@ -67,12 +75,12 @@ function distancesFrom(map, start) {
 }
 
 export function incomeFor(state, seat) {
-  const map = getMap(state.config.mapSeed);
+  const map = mapOf(state);
   const rules = state.config.rules;
   const owned = state.owner.filter((o) => o === seat).length;
   let n = Math.max(rules.minIncome, Math.floor(owned / rules.territoriesPerArmy));
   for (const region of map.regions) {
-    if (region.territories.every((t) => state.owner[t] === seat)) n += Math.round(region.bonus * rules.islandBonus);
+    if (region.territories.every((t) => state.owner[t] === seat)) n += islandBonus(region, rules);
   }
   n += rules.castleIncome * state.players.filter((p) => state.owner[p.castle] === seat).length;
   return n;
@@ -84,7 +92,7 @@ export function createGame({ players, seed = 1, mapSeed = seed, rules: overrides
   if (count < MIN_PLAYERS || count > MAX_PLAYERS) throw new Error('Hexmarch needs 2 to 6 players.');
   if (!Number.isInteger(seed) || !Number.isInteger(mapSeed)) throw new Error('Seeds must be whole numbers.');
   const rules = resolveRules(overrides);
-  const map = getMap(mapSeed);
+  const map = getMap(mapSeed, rules);
   const total = map.territories.length;
 
   const state = {
@@ -141,7 +149,7 @@ const isTerritory = (map, t) => Number.isInteger(t) && t >= 0 && t < map.territo
 const label = (map, t) => `${map.territories[t].name} (id ${t})`;
 
 function parsePlacements(state, seat, list) {
-  const map = getMap(state.config.mapSeed);
+  const map = mapOf(state);
   const income = state.income[seat];
   if (!Array.isArray(list)) {
     return { error: `This is the place phase. Send {"placements":[{"territory":id,"armies":n}]} adding up to ${income}.` };
@@ -160,7 +168,7 @@ function parsePlacements(state, seat, list) {
 }
 
 function parseOrders(state, seat, list) {
-  const map = getMap(state.config.mapSeed);
+  const map = mapOf(state);
   if (!Array.isArray(list)) {
     return { error: 'This is the orders phase. Send {"orders":[{"from":id,"to":id,"armies":n}]}; an empty list holds position.' };
   }
@@ -262,6 +270,8 @@ function resolveOrders(state, sealed) {
         if (db[i] >= da[i]) a.armies--;
       }
     }
+    if (a.armies > 0) a.wonClash = true;
+    if (b.armies > 0) b.wonClash = true;
     events.push({
       type: 'clash',
       a: { seat: a.seat, from: a.from, armies: before[0], left: a.armies },
@@ -279,9 +289,11 @@ function resolveOrders(state, sealed) {
     let def = state.armies[t];
     const before = [att, def];
     const bonus = castleOf.get(t) === defender ? rules.castleDefence : 0;
+    const momentum = force.wonClash ? rules.clashMomentum : 0;
     while (att > 0 && def > 0) {
       const da = rollDice(state, Math.min(rules.attackDice, att));
       const dd = rollDice(state, Math.min(rules.defendDice, def));
+      da[0] += momentum;
       dd[0] += bonus;
       for (let i = 0; i < Math.min(da.length, dd.length); i++) {
         if (da[i] > dd[i]) def--; else att--;
@@ -294,6 +306,7 @@ function resolveOrders(state, sealed) {
       type: 'battle', territory: t, attacker: force.seat, defender, from: force.from,
       attackers: before[0], defenders: before[1], attackersLeft: att, defendersLeft: def, captured,
       ...(late ? { late: true } : {}),
+      ...(momentum ? { momentum: true } : {}),
     });
   };
 
@@ -305,6 +318,7 @@ function resolveOrders(state, sealed) {
     const force = forces.get(a.seat) ?? { seat: a.seat, armies: 0, from: [] };
     force.armies += a.armies;
     force.from.push(a.from);
+    if (a.wonClash) force.wonClash = true;
     forces.set(a.seat, force);
   }
   for (const t of [...inbound.keys()].sort((x, y) => x - y)) {
@@ -344,6 +358,11 @@ function leader(standings) {
   return tied ? null : first.seat;
 }
 
+function dominates(state, seat) {
+  const share = state.config.rules.dominationShare;
+  return share > 0.5 && state.owner.filter((o) => o === seat).length >= share * state.owner.length;
+}
+
 function finishRound(state, events) {
   // A player whose castle is in someone else's hands is out. The rest of
   // their land keeps its garrisons and turns neutral, or (by rule) passes to
@@ -365,7 +384,9 @@ function finishRound(state, events) {
   let result = null;
   if (alive.length === 1) result = { winner: alive[0], reason: 'lastCastle' };
   else if (alive.length === 0) result = { winner: leader(fallenStandings), reason: 'mutualElimination' };
-  else if (state.round >= state.config.rules.maxRounds) {
+  else if (alive.some((seat) => dominates(state, seat))) {
+    result = { winner: alive.find((seat) => dominates(state, seat)), reason: 'domination' };
+  } else if (state.round >= state.config.rules.maxRounds) {
     result = { winner: leader(alive.map((seat) => standing(state, seat))), reason: 'roundLimit' };
   }
   if (result) {
@@ -385,7 +406,7 @@ function finishRound(state, events) {
 // Everything one seat may know: the public board, their own sealed
 // submission, and only whether the others have sealed theirs.
 export function observe(state, seat) {
-  const map = getMap(state.config.mapSeed);
+  const map = mapOf(state);
   const castleOf = new Map(state.players.flatMap((p, i) => (p.alive ? [[p.castle, i]] : [])));
   const owner = (t) => (state.owner[t] === NEUTRAL ? null : state.owner[t]);
   const current = state.history.at(-1);
@@ -422,7 +443,7 @@ export function observe(state, seat) {
     regions: map.regions.map((r) => {
       const first = state.owner[r.territories[0]];
       const held = first !== NEUTRAL && r.territories.every((t) => state.owner[t] === first);
-      return { name: r.name, bonus: r.bonus, territories: r.territories, heldBy: held ? first : null };
+      return { name: r.name, bonus: islandBonus(r, state.config.rules), territories: r.territories, heldBy: held ? first : null };
     }),
     placements: state.phase === 'orders' ? current.placements : null,
     lastRound: last ? { round: last.round, placements: last.placements, orders: last.orders, events: last.events } : null,

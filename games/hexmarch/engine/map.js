@@ -14,7 +14,7 @@ export const CORNERS = [
 
 const REGION_DEFS = [
   { name: 'Frostmere', col: 5, row: 4, count: 5,
-    names: ['Skarn', 'Hollowfen', 'Whitecairn', 'Vintermouth', 'Eldrun'] },
+    names: ['Skarn', 'Hollowfen', 'Whitecairn', 'Vintermouth', 'Eldrun', 'Icewatch'] },
   { name: 'Ashen Reach', col: 15, row: 4, count: 6,
     names: ['Cinderholt', 'Emberwick', 'Sootfall', 'Kilnmoor', 'Blackmarrow', 'Charstead'] },
   { name: 'Verdant Coil', col: 25, row: 4, count: 7,
@@ -24,7 +24,7 @@ const REGION_DEFS = [
   { name: 'Stormcradle', col: 15, row: 17, count: 7,
     names: ['Galehead', 'Thunderby', 'Squallport', 'Rainmoor', 'Tempest Rock', 'Mistral', 'Greywave'] },
   { name: 'Duskmarch', col: 25, row: 17, count: 5,
-    names: ['Nightfen', 'Gloamstead', 'Ravenmoor', 'Umberdeep', 'Shadewell'] },
+    names: ['Nightfen', 'Gloamstead', 'Ravenmoor', 'Umberdeep', 'Shadewell', 'Murkholm'] },
 ];
 
 const LANE_MAX = 5.5; // longest optional sea lane, in hex units
@@ -63,16 +63,29 @@ const dist = (i, j) => {
   return Math.sqrt(dx * dx + dy * dy);
 };
 
-export function generateMap(seed) {
+// Where each island sits. 'centre' swaps the two smallest islands into the
+// middle column, where they have more neighbours.
+const LAYOUTS = { corners: [0, 1, 2, 3, 4, 5], centre: [1, 0, 2, 3, 5, 4] };
+// Map positions in order round the edge: top row left to right, then bottom row right to left.
+const RING = [0, 1, 2, 5, 4, 3];
+
+// Identifies a map shape; two maps with the same seed and key are identical.
+export const shapeKey = (shape = {}) => `${shape.smallIslands ?? 'centre'}:${shape.islandSizes ?? 'varied'}:${shape.seaLanes ?? 'ring'}`;
+
+export function generateMap(seed, shape = {}) {
+  const layout = LAYOUTS[shape.smallIslands] ?? LAYOUTS.centre;
+  const spot = (ri) => REGION_DEFS[layout[ri]];
+  // Islands of 5, 6 and 7 territories, or six of each when sizes are equal.
+  const size = (ri) => (shape.islandSizes === 'equal' ? 6 : REGION_DEFS[ri].count);
   const rand = rng32(seed);
   const rint = (a, b) => a + Math.floor(rand() * (b - a + 1));
 
   // 1. Grow one island per region, always leaving open water between islands.
   const regionOf = new Array(N).fill(-1);
   const islands = REGION_DEFS.map((def, ri) => {
-    const center = (def.row + rint(-1, 1)) * COLS + def.col + rint(-1, 1);
+    const center = (spot(ri).row + rint(-1, 1)) * COLS + spot(ri).col + rint(-1, 1);
     regionOf[center] = ri;
-    return { center, cells: [center], target: def.count * rint(7, 9), done: false };
+    return { center, cells: [center], target: size(ri) * rint(7, 9), done: false };
   });
   for (let growing = true; growing;) {
     growing = false;
@@ -107,7 +120,7 @@ export function generateMap(seed) {
   islands.forEach((isle, ri) => {
     const def = REGION_DEFS[ri];
     const seeds = [isle.cells[Math.floor(rand() * isle.cells.length)]];
-    while (seeds.length < def.count) {
+    while (seeds.length < size(ri)) {
       let best = -1;
       let bestD = -1;
       for (const c of isle.cells) {
@@ -123,7 +136,7 @@ export function generateMap(seed) {
     });
     for (let grew = true; grew;) {
       grew = false;
-      for (let i = 0; i < def.count; i++) {
+      for (let i = 0; i < size(ri); i++) {
         const t = terrs[base + i];
         let best = -1;
         let bestD = Infinity;
@@ -163,10 +176,8 @@ export function generateMap(seed) {
     }
   }
   crossings.sort((x, y) => x.d - y.d);
-  const group = islands.map((_, i) => i);
-  const find = (x) => (group[x] === x ? x : (group[x] = find(group[x])));
-  const laneCount = islands.map(() => 0);
   const lanes = [];
+  const laneCount = islands.map(() => 0);
   const addLane = (c) => {
     const ta = terrOf[c.i];
     const tb = terrOf[c.j];
@@ -176,12 +187,26 @@ export function generateMap(seed) {
     laneCount[c.b]++;
     lanes.push({ a: ta, b: tb, from: POS[c.i], to: POS[c.j] });
   };
-  const spare = [];
-  for (const c of crossings) {
-    if (find(c.a) !== find(c.b)) { group[find(c.a)] = find(c.b); addLane(c); } else spare.push(c);
-  }
-  for (const c of spare) {
-    if (c.d <= LANE_MAX && laneCount[c.a] < LANES_PER_REGION && laneCount[c.b] < LANES_PER_REGION) addLane(c);
+  if (shape.seaLanes === 'nearest') {
+    // A spanning tree over the islands plus short extra crossings. Leaves
+    // islands with one way in, which the balance lab found to be unfair.
+    const group = islands.map((_, i) => i);
+    const find = (x) => (group[x] === x ? x : (group[x] = find(group[x])));
+    const spare = [];
+    for (const c of crossings) {
+      if (find(c.a) !== find(c.b)) { group[find(c.a)] = find(c.b); addLane(c); } else spare.push(c);
+    }
+    for (const c of spare) {
+      if (c.d <= LANE_MAX && laneCount[c.a] < LANES_PER_REGION && laneCount[c.b] < LANES_PER_REGION) addLane(c);
+    }
+  } else {
+    // A ring: every island is joined to the next one round the edge of the
+    // map, so each has exactly two ways in.
+    const at = (position) => layout.indexOf(position);
+    RING.forEach((position, k) => {
+      const [a, b] = [at(position), at(RING[(k + 1) % RING.length])].sort((x, y) => x - y);
+      addLane(crossings.find((c) => c.a === a && c.b === b));
+    });
   }
 
   // 5. Geometry for the client, in hex-size units.
@@ -218,9 +243,9 @@ export function generateMap(seed) {
   const regions = REGION_DEFS.map((def, ri) => ({
     id: ri,
     name: def.name,
-    bonus: def.count - 2,
+    bonus: size(ri) - 2,
     territories: territories.filter((t) => t.region === ri).map((t) => t.id),
   }));
 
-  return { seed, territories, regions, lanes };
+  return { seed, layout: shapeKey(shape), territories, regions, lanes };
 }

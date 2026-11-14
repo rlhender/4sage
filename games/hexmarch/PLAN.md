@@ -15,9 +15,13 @@ and anyone (a person or another model) can pick the work up from here.
 
 _Update this section at the end of every working session._
 
-- Milestones 0 to 7 are built, tested (40 tests) and pushed.
-- The deployment files are checked only as far as a clean production install, start and full game on Linux; nobody has yet run them on a real VPS. That is the owner's next step (milestone 5, last item).
-- The balance lab has produced first findings (see `BALANCE.md`). Three of them change what should be built next, and now head the "Later" list.
+- Milestones 0 to 8 are built, tested (40 tests) and pushed.
+- The owner has handed over the design decisions ("make the best decisions
+  for an engaging game"). Decisions taken since are in the table below
+  (rows 9 to 13) with their evidence in `BALANCE.md`.
+- The deployment files are checked only as far as a clean production
+  install, start and full game on Linux; nobody has yet run them on a real
+  VPS. That is the owner's next step (milestone 5, last item).
 - Nothing is in progress. Next up: the first open item under "Later".
 
 ## What the owner asked for
@@ -59,6 +63,11 @@ _Update this section at the end of every working session._
 | 6 | Rules are data (`rules` in the game config) with today's behaviour as defaults | Lets the lab compare rule sets without code changes, and every game records the rules it used | Hard-coded constants |
 | 7 | State is in memory, written to disk on change | Fast and simple; survives restarts; finished games become records for analysis | A database |
 | 8 | No production dependencies beyond `ws` | Small, easy to host and audit; the MCP endpoint is hand-written and tested against the official client | Web frameworks; the MCP SDK at runtime |
+| 9 | Aim for a game of 12 to 18 rounds with few stalemates, no start clearly better than another, and more than one way to win | Chosen on the owner's behalf as what "engaging" means in numbers the lab can check | Tuning by feel |
+| 10 | Win by last castle, or by holding 65% of the territories | Ends games that are already decided; at 65% both ways to win stay live (57% castle, 39% domination with the tuned strategy) | Last castle only (22 rounds, 10% stalemates); 55% (castles hardly matter) |
+| 11 | Castles start with 8 armies; a fallen player's land turns neutral | Fewer stalemates; handing land to the captor decides the game at the first castle | Garrison 5; land to the captor |
+| 12 | Islands joined in a ring of sea lanes, the two smallest in the middle | Every island has two ways in; win rate by starting island went from 17-31% to 23-29% | Nearest-neighbour lanes (one-entry fortress islands); equal-sized islands (no better) |
+| 13 | Border clashes stay rare and are rewarded when they happen (+1 die for the winner's next battle); fights still go to the end | With public army counts the weaker side should not attack, so clashes are occasional by nature; a retreat rule is the untested alternative | Forcing clashes by rule before seeing how people play |
 
 ## Milestones
 
@@ -144,23 +153,32 @@ So rule sets can be compared without touching code.
 - [x] MH `AGENTS.md`: connect an AI by HTTP or MCP, with copy-paste examples
 - [x] SH `skill/hexmarch-player/SKILL.md` for harnesses that load skills
 
+### 8. Balance changes from the lab
+
+- [x] MH Rules for a second way to win, clash momentum and the map's shape
+      (`dominationShare`, `clashMomentum`, `seaLanes`, `smallIslands`,
+      `islandSizes`, `islandBonusBase`)
+- [x] MH Strategies guess the opponents' orders and plan against them
+      (`foresight`, `counter`)
+- [x] MH New standard rules chosen from lab comparisons; strategy re-tuned
+- [x] MH Fair-map list rebuilt (36 of 60 maps); the server deals from it
+- [x] MH `BALANCE.md` rewritten around what was found and changed
+
 ## Later
 
 In rough order of value. None of these is started.
 
-- [ ] MH Make border clashes happen in bot play. The lab finds about one
-      clash in ten games, so the game's central mechanic is untested. Teach
-      strategies to anticipate an attack and answer it; if clashing is still
-      never worth it, give the rule a reason (see `BALANCE.md`)
-- [ ] MH Level the starting islands. Small corner islands are the best
-      start on 24 of 30 maps; fix it in the map generator or in where
-      castles may be placed, then re-judge maps
-- [ ] SH Adopt `castleGarrison=8` as standard if it still looks best after
-      re-measuring, and re-run every comparison against it
+- [ ] SH Round playback in the GUI: reveal everyone's orders, then show
+      clashes and battles one at a time. The reveal is the dramatic moment
+      of a simultaneous game and today it is a list of text
+- [ ] SH Try `castleDefence=1` with strategies re-tuned for it; it gives the
+      most comebacks of any variant measured
+- [ ] SH Measure at two, five and six players; only three and four so far
+- [ ] SH A retreat rule (an attack breaks off at half strength), as the
+      candidate for making border clashes worth having
 - [ ] SH An LLM-backed seat run by the server itself (needs an API key and a
       provider choice from the owner; today an LLM plays from outside)
 - [ ] SH Feed finished human games into the lab, to compare with bot results
-- [ ] SH Round playback in the GUI: show clashes and battles step by step
 - [ ] SH Phone layout: a portrait arrangement of the islands, or pinch zoom
 - [ ] SH Spectator links for a room
 - [ ] NH Map generator options in the lab (island count, sizes, sea lanes)
@@ -172,15 +190,12 @@ In rough order of value. None of these is started.
 
 ## Questions for the owner
 
-- Fights currently go to the end with no retreat. Keep, or allow an order to
-  say "stop if down to N"?
-- When a castle falls the loser's other land turns neutral. The lab can
-  compare this with handing it to the captor; which do you prefer to play?
+None are blocking. The owner asked for design decisions to be made without
+check-ins; they are recorded above. Two would still benefit from an owner's
+view when there is one:
+
 - Should the server be open to anyone who has the address, or need a key?
-- Games between bots average 22 rounds under the standard rules. Is that
-  the length you want, or should the rules aim for something shorter?
-- Border clashes are rare in bot play. Is the clash meant to be common, or
-  an occasional event?
+- After playing with people: do border clashes happen often enough?
 
 ## Working conventions
 

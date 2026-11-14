@@ -34,8 +34,8 @@ test('map evaluation accounts for every start and describes the map', () => {
 });
 
 test('the lab runs from the command line', () => {
-  const out = execFileSync(process.execPath, [CLI, 'lab', 'sweep', '--name', 'castleGarrison', '--values', '5,9', '--games', '12'], { encoding: 'utf8' });
-  assert.match(out, /castleGarrison=5 \(standard\)\s+castleGarrison=9/);
+  const out = execFileSync(process.execPath, [CLI, 'lab', 'sweep', '--name', 'castleGarrison', '--values', '8,12', '--games', '12'], { encoding: 'utf8' });
+  assert.match(out, /castleGarrison=8 \(standard\)\s+castleGarrison=12/);
   assert.match(out, /average rounds/);
   assert.match(execFileSync(process.execPath, [CLI, 'rules'], { encoding: 'utf8' }), /castleDefence\s+0\s+0 to 3/);
 });

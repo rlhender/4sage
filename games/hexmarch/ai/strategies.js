@@ -5,6 +5,12 @@
 // One decision procedure, driven by a handful of weights and by exact battle
 // odds; the named personalities are just different weights, and tuning a
 // strategy means searching for better ones.
+//
+// Because everyone moves at once, a good move depends on what the others are
+// about to do. A strategy with foresight guesses each opponent's orders (by
+// asking what a plain player would do in their seat) and plans against that:
+// it strikes territories it expects to be emptied, and it meets an expected
+// attack on the border when that protects its land better than waiting.
 
 import { captureOdds, clashOdds } from '../engine/odds.js';
 
@@ -15,15 +21,22 @@ export const WEIGHTS = {
   commit: [0.3, 1], // share of its free armies sent on an attack
   castleHunt: [0, 3], // extra value of capturing an enemy castle
   islandFocus: [0, 3], // extra value of completing, or breaking up, an island
-  counter: [0, 1], // readiness to meet a threatening neighbour on the border rather than wait for it
+  foresight: [0, 1], // how far it trusts its guess at the other players' orders
+  counter: [0, 1], // how much it will risk to meet an expected attack in the field
 };
 
 export const PRESETS = {
-  aggressive: { aggression: 0.9, castleGuard: 0.3, reserve: 0, commit: 1, castleHunt: 2, islandFocus: 0.5, counter: 0.5 },
-  balanced: { aggression: 0.6, castleGuard: 0.7, reserve: 0.2, commit: 0.9, castleHunt: 1, islandFocus: 1, counter: 0.3 },
-  fortress: { aggression: 0.3, castleGuard: 1.3, reserve: 0.5, commit: 0.7, castleHunt: 0.5, islandFocus: 1.5, counter: 0.2 },
-  passive: { aggression: 0, castleGuard: 1, reserve: 0.6, commit: 0.6, castleHunt: 0.3, islandFocus: 0.5, counter: 0 },
+  aggressive: { aggression: 0.9, castleGuard: 0.3, reserve: 0, commit: 1, castleHunt: 2, islandFocus: 0.5, foresight: 0.3, counter: 0.8 },
+  balanced: { aggression: 0.6, castleGuard: 0.7, reserve: 0.2, commit: 0.9, castleHunt: 1, islandFocus: 1, foresight: 0.6, counter: 0.5 },
+  fortress: { aggression: 0.3, castleGuard: 1.3, reserve: 0.5, commit: 0.7, castleHunt: 0.5, islandFocus: 1.5, foresight: 0.8, counter: 0.3 },
+  passive: { aggression: 0, castleGuard: 1, reserve: 0.6, commit: 0.6, castleHunt: 0.3, islandFocus: 0.5, foresight: 0.5, counter: 0 },
 };
+
+// The plain player every strategy assumes its opponents to be.
+const ASSUMED = { aggression: 0.6, castleGuard: 0.7, reserve: 0.2, commit: 0.9, castleHunt: 1, islandFocus: 1, foresight: 0, counter: 0 };
+
+const OWN_CASTLE_VALUE = 8;
+const GOOD_ENOUGH = 0.92; // stop pooling armies once a capture is this likely
 
 function survey(obs, w) {
   const me = obs.you;
@@ -46,15 +59,19 @@ function survey(obs, w) {
     return v;
   };
 
+  // What one of its own territories is worth keeping.
+  const worth = (t) => 1 + (t === castle ? OWN_CASTLE_VALUE : 0) + (regionOf.get(t).heldBy === me ? w.islandFocus * regionOf.get(t).bonus : 0);
+
   // Armies that must stay home.
   const keep = (t) => (t === castle
     ? Math.max(1, Math.ceil(w.castleGuard * threat(t)))
     : 1 + Math.floor(w.reserve * Math.max(0, ...hostile(t).map((n) => T[n].armies))));
 
-  // Chance that a force of this size captures territory n as it stands.
-  const odds = (force, n) => captureOdds(force, T[n].armies, obs.rules, T[n].castleOf === T[n].owner).win;
+  // Chance that a force captures territory n against a given garrison.
+  const odds = (force, n, garrison = T[n].armies, momentum = false) =>
+    captureOdds(force, garrison, obs.rules, T[n].castleOf === T[n].owner, momentum).win;
 
-  return { me, T, mine, castle, others, hostile, threat, value, keep, odds };
+  return { me, T, mine, castle, others, hostile, threat, value, worth, keep, odds };
 }
 
 export function choosePlacements(obs, w) {
@@ -79,8 +96,25 @@ export function choosePlacements(obs, w) {
   return [...placed].map(([territory, armies]) => ({ territory, armies }));
 }
 
+// A guess at what every opponent will order this round.
+function predict(obs) {
+  const leaving = new Map(); // territory → armies expected to march out of it
+  const inbound = new Map(); // one of my territories → attacks expected on it
+  for (const p of obs.players) {
+    if (!p.alive || p.seat === obs.you) continue;
+    for (const o of chooseOrders({ ...obs, you: p.seat }, ASSUMED)) {
+      leaving.set(o.from, (leaving.get(o.from) ?? 0) + o.armies);
+      if (obs.territories[o.to].owner !== obs.you) continue;
+      if (!inbound.has(o.to)) inbound.set(o.to, []);
+      inbound.get(o.to).push(o);
+    }
+  }
+  return { leaving, inbound };
+}
+
 export function chooseOrders(obs, w) {
-  const { me, T, mine, others, hostile, value, keep, odds } = survey(obs, w);
+  const { me, T, mine, castle, others, value, worth, keep, odds } = survey(obs, w);
+  const rules = obs.rules;
   const orders = [];
   const minWin = 0.95 - 0.55 * w.aggression;
   const free = new Map(mine.map((t) => {
@@ -88,47 +122,81 @@ export function chooseOrders(obs, w) {
     return [t, Math.round(spare * w.commit)];
   }));
 
-  // Counter-attacks: where a neighbour is strong enough to overrun this
-  // territory, march out and meet it on the border, where the fight is even,
-  // instead of defending with fewer dice. Worth it only if that neighbour
-  // really does attack, which is the gamble the weight controls.
-  if (w.counter > 0) {
-    for (const t of mine) {
-      const spare = free.get(t);
-      if (spare < 1) continue;
-      let pick = null;
-      for (const n of hostile(t)) {
-        const theirs = T[n].armies - 1;
-        if (theirs < 1 || odds(theirs, t) < 0.5) continue;
-        if (clashOdds(spare, theirs, obs.rules).aWins < 1 - w.counter) continue;
-        if (pick === null || T[n].armies > T[pick].armies) pick = n;
-      }
-      if (pick !== null) {
-        orders.push({ from: t, to: pick, armies: spare });
-        free.set(t, 0);
-      }
-    }
-  }
+  // What it expects of the others. `trust` is the probability it gives to its
+  // guess coming true; the rest of the time it assumes everyone holds.
+  const trust = w.foresight ?? 0;
+  const guess = trust > 0 ? predict(obs) : { leaving: new Map(), inbound: new Map() };
+  const inbound = (t) => guess.inbound.get(t) ?? [];
+  // Chance of losing territory t, left with `home` armies, to the given forces.
+  const risk = (t, home, forces) => {
+    const total = forces.reduce((a, b) => a + b, 0);
+    return total >= 1 ? captureOdds(total, Math.max(1, home), rules, t === castle).win : 0;
+  };
 
-  // Attacks: repeatedly take the most valuable target it expects to win,
-  // pooling neighbouring territories until the odds are good enough.
+  // What sending everything free from `used` at territory n is expected to do:
+  // the chance of taking n, the change in danger to the land left behind, and
+  // how likely that land was to fall anyway. Marching out to meet an expected
+  // attack turns it into a border clash, which can serve a threatened
+  // territory better than waiting behind its walls.
+  const assess = (n, used) => {
+    let ifHeld = 0; // force arriving if the others hold
+    let ifGuessed = 0; // force arriving if the guess comes true
+    let clashWon = 1;
+    let clashed = false;
+    let danger = 0;
+    let doomed = 0;
+    for (const t of used) {
+      const send = free.get(t);
+      const coming = inbound(t);
+      const facing = coming.find((o) => o.from === n);
+      const rest = coming.filter((o) => o.from !== n).map((o) => o.armies);
+      const before = trust * risk(t, T[t].armies, coming.map((o) => o.armies));
+      let after;
+      ifHeld += send;
+      if (facing) {
+        // The two forces meet on the border; only the winner goes on.
+        const clash = clashOdds(send, facing.armies, rules);
+        clashWon *= clash.aWins;
+        ifGuessed += clash.aWins > 0 ? clash.aLeft / clash.aWins : 0;
+        clashed = true;
+        const theirs = clash.bWins > 0 ? Math.max(1, Math.round(clash.bLeft / clash.bWins)) : 0;
+        after = trust * (clash.bWins * risk(t, T[t].armies - send, [...rest, theirs])
+          + (1 - clash.bWins) * risk(t, T[t].armies - send, rest));
+      } else {
+        ifGuessed += send;
+        after = trust * risk(t, T[t].armies - send, coming.map((o) => o.armies));
+      }
+      danger += (after - before) * worth(t);
+      doomed = Math.max(doomed, before);
+    }
+    const emptied = Math.max(1, T[n].armies - (guess.leaving.get(n) ?? 0));
+    const guessed = ifGuessed >= 1 ? clashWon * odds(Math.round(ifGuessed), n, emptied, clashed) : 0;
+    return { win: trust * guessed + (1 - trust) * odds(ifHeld, n), danger, doomed };
+  };
+
+  // Attacks: repeatedly take the best-scoring target, pooling neighbouring
+  // territories until the odds are good enough. A target scores by its value
+  // times the chance of taking it, less any added danger at home; relief
+  // from danger counts in its favour as far as the counter weight allows.
   const targets = [...new Set(mine.flatMap(others))];
   for (;;) {
     let best = null;
     for (const n of targets) {
       const sources = T[n].adjacent.filter((t) => (free.get(t) ?? 0) > 0).sort((a, b) => free.get(b) - free.get(a));
       const used = [];
-      let force = 0;
-      let win = 0;
+      let found = null;
       for (const t of sources) {
         used.push(t);
-        force += free.get(t);
-        win = odds(force, n);
-        if (win >= 0.92) break;
+        found = assess(n, used);
+        if (found.win >= GOOD_ENOUGH) break;
       }
-      if (win < minWin) continue;
-      const score = value(n) * win;
-      if (!best || score > best.score) best = { n, used, score };
+      if (!found) continue;
+      // Armies in a territory that is likely to fall anyway are cheap to risk,
+      // so the bar for attacking with them drops.
+      const gain = found.win >= minWin * (1 - w.counter * found.doomed) ? value(n) * found.win : 0;
+      const relief = found.danger < 0 ? -found.danger * w.counter : -found.danger;
+      const score = gain + relief;
+      if (score > 0.05 && (gain > 0 || relief > 0.25) && (!best || score > best.score)) best = { n, used: [...used], score };
     }
     if (!best) break;
     for (const t of best.used) {

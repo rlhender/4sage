@@ -125,7 +125,7 @@ function structure(map) {
   const regions = map.regions.map((region) => {
     const lanes = region.territories.reduce((sum, t) => sum
       + map.territories[t].adj.filter((n) => map.territories[n].region !== region.id).length, 0);
-    return { name: region.name, territories: region.territories.length, bonus: region.bonus, seaLanes: lanes };
+    return { name: region.name, territories: region.territories.length, seaLanes: lanes };
   });
   const degree = map.territories.map((t) => t.adj.length);
   return { regions, seaLanes: map.lanes.length, fewestNeighbours: Math.min(...degree), mostNeighbours: Math.max(...degree) };
@@ -134,8 +134,8 @@ function structure(map) {
 // Mirror matches on one map: every seat plays the same strategy, so any
 // difference in results comes from where a player starts, not how they play.
 export function evaluateMap({ mapSeed, games = 300, players = 3, strategy = 'balanced', rules = {}, seed = 1 }) {
-  const map = getMap(mapSeed);
   const full = resolveRules(rules);
+  const map = getMap(mapSeed, full);
   const agents = Array.from({ length: players }, (_, i) => makeAgent(strategy, `${strategy}#${i + 1}`));
   const starts = map.regions.map((region) => ({ island: region.name, starts: 0, wins: 0 }));
   const played = [];

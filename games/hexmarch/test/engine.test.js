@@ -177,7 +177,7 @@ test('moves arrive after the fighting, and attack if the destination has fallen'
   // A move into land that is still yours simply adds to it.
   const quiet = duel(4, 4);
   const from = quiet.castles[0];
-  const to = getMap(3).territories[from].adj[0];
+  const to = getMap(3).territories[from].adj.find((n) => quiet.state.owner[n] === NEUTRAL);
   quiet.state.owner[to] = 0;
   const had = quiet.state.armies[to];
   seal(quiet.state, 0, [{ from, to, armies: 8 }]);

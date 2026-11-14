@@ -89,7 +89,7 @@ export function briefing(view) {
     const held = region.heldBy === null ? '' : region.heldBy === me ? ' HELD BY YOU' : ` held by ${view.players[region.heldBy].name}`;
     const need = mine.length && missing.length && missing.length <= 3
       ? `; you need ${missing.map((t) => `${tag(t)} (${holder(t)} ${T[t].armies})`).join(', ')}` : '';
-    out.push(`${region.name} +${Math.round(region.bonus * view.rules.islandBonus)}: you hold ${mine.length} of ${region.territories.length}${held}${need}`);
+    out.push(`${region.name} +${region.bonus}: you hold ${mine.length} of ${region.territories.length}${held}${need}`);
   }
 
   // ----- what just happened -----

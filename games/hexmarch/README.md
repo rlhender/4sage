@@ -3,7 +3,8 @@
 A territory-conquest game for two to six players in which **everyone moves at
 once**. Each round all players place their new armies, then seal secret
 attack orders that are revealed and resolved together. Each player has a
-castle; lose it and you are out.
+castle; lose it and you are out. Win by taking the last castle or by
+holding most of the map.
 
 It is built so that an AI can play as readily as a person, and so that AIs
 can be used to find out which maps and rules make a good game:
@@ -77,7 +78,7 @@ node cli/hexmarch.js submit --file game.json --json '{"placements":[...]}'
 | `engine/odds.js` | Exact win chances and expected survivors for any fight. |
 | `engine/briefing.js` | A player's view as text arranged for deciding; what AI players read. |
 | `engine/report.js` | Round events in plain English. |
-| `ai/strategies.js` | Computer players: one decision procedure driven by seven weights. |
+| `ai/strategies.js` | Computer players: one decision procedure driven by eight weights, with a guess at the opponents' orders. |
 | `ai/arena.js` | Whole games between agents, mass simulation, self-play tuning. |
 | `ai/lab.js` | The balance lab: game-health measures for rules and maps. |
 | `ai/tuned.json`, `balance/maps.json` | Results of the last tuning run and the maps judged fair. |
@@ -104,7 +105,8 @@ threshold. Their personalities are only different weights:
 | `commit` | share of its free armies sent on an attack |
 | `castleHunt` | extra value placed on enemy castles |
 | `islandFocus` | extra value placed on completing or breaking up islands |
-| `counter` | readiness to meet a threatening neighbour on the border |
+| `foresight` | how far it trusts its guess at what the others will order |
+| `counter` | how much it will risk to meet an expected attack in the field |
 
 `aggressive`, `balanced`, `fortress` and `passive` are fixed presets.
 `tuned` is found by self-play: each generation, mutated copies of the

@@ -8,7 +8,7 @@ const MAX = 120; // table size; larger fights are scaled down to fit
 // Chance of each (lossA, lossB) when A rolls nA dice against B's nB dice.
 // kind 'battle': ties cost the attacker, and `bonus` is added to B's best die.
 // kind 'both' / 'none': a border clash where a tie costs both sides, or neither.
-function rollOutcomes(nA, nB, kind, bonus) {
+function rollOutcomes(nA, nB, kind, bonus, attackBonus) {
   const tally = new Map();
   const dice = new Array(nA + nB).fill(1);
   const total = 6 ** dice.length;
@@ -16,6 +16,7 @@ function rollOutcomes(nA, nB, kind, bonus) {
     let v = n;
     for (let i = 0; i < dice.length; i++) { dice[i] = 1 + (v % 6); v = Math.floor(v / 6); }
     const a = dice.slice(0, nA).sort((x, y) => y - x);
+    a[0] += attackBonus;
     const b = dice.slice(nA).sort((x, y) => y - x);
     b[0] += bonus;
     let lossA = 0;
@@ -35,7 +36,7 @@ function rollOutcomes(nA, nB, kind, bonus) {
 }
 
 // table[a][b] = [P(A wins), P(B wins), expected A left, expected B left]
-function buildTable(diceA, diceB, kind, bonus = 0) {
+function buildTable(diceA, diceB, kind, bonus = 0, attackBonus = 0) {
   const outcomes = {};
   const table = [];
   for (let a = 0; a <= MAX; a++) {
@@ -45,7 +46,7 @@ function buildTable(diceA, diceB, kind, bonus = 0) {
       const nA = Math.min(diceA, a);
       const nB = Math.min(diceB, b);
       const cell = [0, 0, 0, 0];
-      for (const o of (outcomes[nA * 4 + nB] ??= rollOutcomes(nA, nB, kind, bonus))) {
+      for (const o of (outcomes[nA * 4 + nB] ??= rollOutcomes(nA, nB, kind, bonus, attackBonus))) {
         const next = table[a - o.lossA][b - o.lossB];
         for (let i = 0; i < 4; i++) cell[i] += o.p * next[i];
       }
@@ -56,9 +57,9 @@ function buildTable(diceA, diceB, kind, bonus = 0) {
 }
 
 const tables = new Map();
-function table(diceA, diceB, kind, bonus = 0) {
-  const key = `${diceA}:${diceB}:${kind}:${bonus}`;
-  if (!tables.has(key)) tables.set(key, buildTable(diceA, diceB, kind, bonus));
+function table(diceA, diceB, kind, bonus = 0, attackBonus = 0) {
+  const key = `${diceA}:${diceB}:${kind}:${bonus}:${attackBonus}`;
+  if (!tables.has(key)) tables.set(key, buildTable(diceA, diceB, kind, bonus, attackBonus));
   return tables.get(key);
 }
 
@@ -70,9 +71,10 @@ function lookup(table, a, b) {
 }
 
 // An attacking force against a garrison, which wins ties. Pass `castle` when
-// the target is a castle defended by its own player.
-export function captureOdds(attackers, defenders, rules = DEFAULT_RULES, castle = false) {
-  const odds = table(rules.attackDice, rules.defendDice, 'battle', castle ? rules.castleDefence : 0);
+// the target is a castle defended by its own player, and `momentum` when the
+// attackers have just won a border clash.
+export function captureOdds(attackers, defenders, rules = DEFAULT_RULES, castle = false, momentum = false) {
+  const odds = table(rules.attackDice, rules.defendDice, 'battle', castle ? rules.castleDefence : 0, momentum ? rules.clashMomentum : 0);
   const [win, , attackersLeft, defendersLeft] = lookup(odds, attackers, defenders);
   return { win, attackersLeft, defendersLeft };
 }

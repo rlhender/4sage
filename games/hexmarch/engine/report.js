@@ -15,7 +15,7 @@ export function describeEvent(event, view) {
     }
     case 'battle': {
       const odds = `${event.attackers} against ${event.defenders}`;
-      const late = event.late ? ' (arriving as reinforcements)' : '';
+      const late = event.late ? ' (arriving as reinforcements)' : event.momentum ? ' (with momentum from the clash)' : '';
       return event.captured
         ? `${who(event.attacker)} took ${place(event.territory)} from ${who(event.defender)}${late}: ${odds}, ${event.attackersLeft} left.`
         : `${who(event.defender)} held ${place(event.territory)} against ${who(event.attacker)}${late}: ${odds}, ${event.defendersLeft} left.`;
@@ -25,7 +25,7 @@ export function describeEvent(event, view) {
     case 'eliminated':
       return `${who(event.seat)}'s castle fell to ${who(event.by)}. ${who(event.seat)} is out.`;
     case 'gameOver': {
-      const reason = { lastCastle: 'the last castle standing', roundLimit: 'the round limit', mutualElimination: 'mutual elimination' }[event.reason];
+      const reason = { lastCastle: 'the last castle standing', domination: 'holding most of the map', roundLimit: 'the round limit', mutualElimination: 'mutual elimination' }[event.reason];
       return event.winner === null ? `The game ends in a draw (${reason}).` : `${who(event.winner)} wins by ${reason}.`;
     }
     default:

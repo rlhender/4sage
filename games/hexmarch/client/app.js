@@ -2,7 +2,7 @@
 // server sends, collects placements and orders, and sends them back as the
 // same JSON any other kind of player would submit.
 
-import { CORNERS, generateMap } from '/engine/map.js';
+import { CORNERS, generateMap, shapeKey } from '/engine/map.js';
 import { captureOdds } from '/engine/odds.js';
 import { describeEvent, describePlacements } from '/engine/report.js';
 
@@ -175,8 +175,8 @@ const px = (v) => (v * HEX).toFixed(1);
 const hexPath = (cells) => cells.map(([x, y]) =>
   `M${CORNERS.map(([cx, cy]) => `${px(x + cx)},${px(y + cy)}`).join('L')}Z`).join('');
 
-function buildMap(seed) {
-  map = generateMap(seed);
+function buildMap(game) {
+  map = generateMap(game.mapSeed, game.rules);
   const svg = $('#map');
   svg.replaceChildren();
   const all = map.territories.flatMap((t) => t.cells);
@@ -222,7 +222,7 @@ function buildMap(seed) {
     const cells = region.territories.flatMap((t) => map.territories[t].cells);
     const x = cells.reduce((sum, c) => sum + c[0], 0) / cells.length;
     const y = Math.min(...cells.map((c) => c[1])) - 1.7;
-    svg.append(svgEl('text', { class: 'region-label', x: px(x), y: px(y) }, `${region.name.toUpperCase()} +${region.bonus}`));
+    svg.append(svgEl('text', { class: 'region-label', x: px(x), y: px(y) }, `${region.name.toUpperCase()} +${game.regions[region.id].bonus}`));
   }
 }
 
@@ -494,7 +494,7 @@ function render() {
   if (!room) return;
   $('#roomTag').textContent = room.code;
   if (!game) { renderLobby(); return; }
-  if (!map || map.seed !== game.mapSeed) buildMap(game.mapSeed);
+  if (!map || map.seed !== game.mapSeed || map.layout !== shapeKey(game.rules)) buildMap(game);
   syncDrafts(game);
   renderStatus(game);
   renderMap(game);

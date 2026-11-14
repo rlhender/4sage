@@ -106,4 +106,8 @@ each call that acts for your seat.
   back along the same border fights their army with yours instead of with
   your garrison.
 - Holding a whole island pays its bonus every round.
+- There are two ways to win: take every other castle, or hold 65% of the
+  territories at the end of a round. Watch for a rival nearing that share.
+- Winning a border clash gives your survivors +1 on their highest die in
+  the battle that follows.
 - An empty orders list is a legal move.
