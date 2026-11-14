@@ -2,9 +2,10 @@
 
 A territory-conquest game for two to six players in which **everyone moves at
 once**. Each round all players place their new armies, then seal secret
-attack orders that are revealed and resolved together. Each player has a
-castle; lose it and you are out. Win by taking the last castle or by
-holding most of the map.
+attack orders that are revealed and resolved together. Everyone starts with
+a castle and a few territories on a map that is mostly neutral. Lose your
+castle and you are out; win by taking the last castle or by holding most
+of the map.
 
 It is built so that an AI can play as readily as a person, and so that AIs
 can be used to find out which maps and rules make a good game:

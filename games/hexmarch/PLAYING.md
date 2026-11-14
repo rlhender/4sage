@@ -5,14 +5,20 @@ person, a script or a large language model can play from this page alone.
 
 ## The game
 
-Two to six players fight over an archipelago of six islands divided into 36
+Two to six players fight over an archipelago of six islands, each of six
 territories. Territories border their neighbours on the same island. The
 islands are joined in a ring by sea lanes, so every island has exactly two
-ways in. Each player starts with one **castle**, garrisoned with 8 armies.
-Lose your castle and you are out.
+ways in.
 
-You win by being the last castle standing, or by holding 65% of all
-territories (24 of the 36) at the end of a round.
+Each player starts with a **castle**, garrisoned with at least 8 armies,
+and five other territories. Castles are spread evenly round the ring, one
+to an island. The other territories are dealt at random, except that
+nobody starts next to an enemy castle. Land that belongs to no player is
+neutral: it holds 2 armies, defends itself, and never attacks.
+
+Lose your castle and you are out. You win by being the last castle
+standing, or by holding 60% of all territories (22 of the 36) at the end
+of a round.
 
 Everything on the board is public: who holds each territory, how many armies
 are there, and where the castles are. The only secrets are what each player
@@ -26,8 +32,8 @@ Everyone acts at the same time. A round has two phases.
 
 Each player receives new armies:
 
-- one per three territories held, rounded down, and never fewer than 3;
-- plus the bonus of every island they hold completely.
+- one per two territories held, rounded down, and never fewer than 3;
+- plus 4 for every island they hold completely.
 
 Each player seals where those armies go, on their own territories. When the
 last player seals, all placements are applied and revealed together.
@@ -79,7 +85,7 @@ player's land, and so on). Every view lists the rules in force under
 ### Ending
 
 The game ends at the end of a round in which only one castle is left, or
-in which one player holds 65% of all territories. It also ends after the
+in which one player holds 60% of all territories. It also ends after the
 last round (40), when the player with the most territories wins, then the
 most armies; an exact tie is a draw. If the last players eliminate each
 other in the same round, the same comparison decides it.

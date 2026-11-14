@@ -15,10 +15,12 @@ and anyone (a person or another model) can pick the work up from here.
 
 _Update this section at the end of every working session._
 
-- Milestones 0 to 8 are built, tested (40 tests) and pushed.
+- Milestones 0 to 8 are built, tested (41 tests) and pushed.
 - The owner has handed over the design decisions ("make the best decisions
-  for an engaging game"). Decisions taken since are in the table below
-  (rows 9 to 13) with their evidence in `BALANCE.md`.
+  for an engaging game"). Decisions taken since are rows 9 to 14 of the
+  table below, with their evidence in `BALANCE.md`.
+- The standard rules pass every health check at two to six players. The
+  one aim not met: border clashes almost never happen in bot play.
 - The deployment files are checked only as far as a clean production
   install, start and full game on Linux; nobody has yet run them on a real
   VPS. That is the owner's next step (milestone 5, last item).
@@ -63,11 +65,12 @@ _Update this section at the end of every working session._
 | 6 | Rules are data (`rules` in the game config) with today's behaviour as defaults | Lets the lab compare rule sets without code changes, and every game records the rules it used | Hard-coded constants |
 | 7 | State is in memory, written to disk on change | Fast and simple; survives restarts; finished games become records for analysis | A database |
 | 8 | No production dependencies beyond `ws` | Small, easy to host and audit; the MCP endpoint is hand-written and tested against the official client | Web frameworks; the MCP SDK at runtime |
-| 9 | Aim for a game of 12 to 18 rounds with few stalemates, no start clearly better than another, and more than one way to win | Chosen on the owner's behalf as what "engaging" means in numbers the lab can check | Tuning by feel |
-| 10 | Win by last castle, or by holding 65% of the territories | Ends games that are already decided; at 65% both ways to win stay live (57% castle, 39% domination with the tuned strategy) | Last castle only (22 rounds, 10% stalemates); 55% (castles hardly matter) |
-| 11 | Castles start with 8 armies; a fallen player's land turns neutral | Fewer stalemates; handing land to the captor decides the game at the first castle | Garrison 5; land to the captor |
-| 12 | Islands joined in a ring of sea lanes, the two smallest in the middle | Every island has two ways in; win rate by starting island went from 17-31% to 23-29% | Nearest-neighbour lanes (one-entry fortress islands); equal-sized islands (no better) |
+| 9 | Aim for a game of 10 to 18 rounds at any table size, few stalemates, nothing decided before players can respond, no start clearly better than another, more than one way to win | Chosen on the owner's behalf as what "engaging" means in numbers the lab can check | Tuning by feel |
+| 10 | Win by last castle, or by holding 60% of the territories | Ends games that are already decided, and both ways to win stay live | Last castle only (18 to 26 rounds at four to six players) |
+| 11 | Every player starts with a castle (8 armies) and five territories, never next to an enemy castle; the rest of the map is neutral | Two- and three-player games were over within three rounds 50% and 33% of the time; now 2% and 0% | Dealing the whole map out; starting with the land round the castle or the whole island (start position then decides too much) |
+| 12 | Six equal islands joined in a ring of sea lanes, landings kept apart, castles spread evenly round the ring | Win rate by starting island is now within about 3 points of even at three, four and five players | Nearest-neighbour lanes; castles as far apart as possible; islands of different sizes |
 | 13 | Border clashes stay rare and are rewarded when they happen (+1 die for the winner's next battle); fights still go to the end | With public army counts the weaker side should not attack, so clashes are occasional by nature; a retreat rule is the untested alternative | Forcing clashes by rule before seeing how people play |
+| 14 | Income is one army per two territories; a fallen player's land turns neutral | Suits the smaller starting holdings; handing land to the captor decides the game at the first castle | One per three; land to the captor |
 
 ## Milestones
 
@@ -160,8 +163,12 @@ So rule sets can be compared without touching code.
       `islandSizes`, `islandBonusBase`)
 - [x] MH Strategies guess the opponents' orders and plan against them
       (`foresight`, `counter`)
-- [x] MH New standard rules chosen from lab comparisons; strategy re-tuned
-- [x] MH Fair-map list rebuilt (36 of 60 maps); the server deals from it
+- [x] MH Starting position rules (`minSeats`, `startingLand`,
+      `neutralGarrison`); castles spread evenly round the ring
+- [x] MH New standard rules chosen from lab comparisons at two to six
+      players; strategy re-tuned
+- [x] MH Fair-map list rebuilt (28 of 60 maps, fair at three and four
+      players); the server deals from it
 - [x] MH `BALANCE.md` rewritten around what was found and changed
 - [x] SH Round playback in the GUI: everyone's orders revealed, then each
       clash, battle and move shown in turn
@@ -170,11 +177,14 @@ So rule sets can be compared without touching code.
 
 In rough order of value. None of these is started.
 
-- [ ] SH Try `castleDefence=1` with strategies re-tuned for it; it gives the
-      most comebacks of any variant measured
-- [ ] SH Measure at two, five and six players; only three and four so far
-- [ ] SH A retreat rule (an attack breaks off at half strength), as the
-      candidate for making border clashes worth having
+- [ ] MH A retreat rule (an attack breaks off at half strength), as the
+      candidate for making border clashes worth having. Clashes happen
+      about once in fifty bot games, so the game's central idea is still
+      unproven
+- [ ] SH Rewrite the fixed personalities for the current rules; aggressive
+      now wins 44% of mixed games and fortress and passive are too weak
+- [ ] SH Try `castleDefence=1` under the current rules with re-tuned
+      strategies
 - [ ] SH An LLM-backed seat run by the server itself (needs an API key and a
       provider choice from the owner; today an LLM plays from outside)
 - [ ] SH Feed finished human games into the lab, to compare with bot results

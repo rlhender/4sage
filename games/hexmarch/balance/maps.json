@@ -1,331 +1,344 @@
 {
   "settings": {
     "games": 300,
-    "players": 3,
     "strategy": "balanced",
     "rules": {},
-    "seed": 1
+    "seed": 1,
+    "players": [
+      3,
+      4
+    ]
   },
   "fair": [
-    3,
+    1,
     4,
     5,
-    10,
+    7,
+    8,
     11,
-    17,
+    12,
+    13,
+    14,
+    16,
+    19,
+    20,
+    22,
     23,
-    31,
+    26,
+    27,
+    30,
     33,
-    34,
     36,
-    37,
     39,
+    42,
     43,
+    45,
     51,
-    53,
+    52,
     57,
-    60
+    58,
+    59
   ],
   "judged": [
     {
       "mapSeed": 1,
-      "verdict": "uneven",
-      "largestDeviation": 2.285
+      "verdict": "fair",
+      "largestGap": 0.078
     },
     {
       "mapSeed": 2,
       "verdict": "uneven",
-      "largestDeviation": 2.039
+      "largestGap": 0.107
     },
     {
       "mapSeed": 3,
-      "verdict": "fair",
-      "largestDeviation": 1.758
+      "verdict": "uneven",
+      "largestGap": 0.12
     },
     {
       "mapSeed": 4,
       "verdict": "fair",
-      "largestDeviation": 1.768
+      "largestGap": 0.063
     },
     {
       "mapSeed": 5,
       "verdict": "fair",
-      "largestDeviation": 1.4
+      "largestGap": 0.08
     },
     {
       "mapSeed": 6,
       "verdict": "uneven",
-      "largestDeviation": 2.694
+      "largestGap": 0.12
     },
     {
       "mapSeed": 7,
-      "verdict": "uneven",
-      "largestDeviation": 2.75
+      "verdict": "fair",
+      "largestGap": 0.066
     },
     {
       "mapSeed": 8,
-      "verdict": "uneven",
-      "largestDeviation": 2.083
+      "verdict": "fair",
+      "largestGap": 0.07
     },
     {
       "mapSeed": 9,
       "verdict": "uneven",
-      "largestDeviation": 2.623
+      "largestGap": 0.14
     },
     {
       "mapSeed": 10,
-      "verdict": "fair",
-      "largestDeviation": 1.992
+      "verdict": "uneven",
+      "largestGap": 0.082
     },
     {
       "mapSeed": 11,
       "verdict": "fair",
-      "largestDeviation": 1.956
+      "largestGap": 0.06
     },
     {
       "mapSeed": 12,
-      "verdict": "uneven",
-      "largestDeviation": 2.256
+      "verdict": "fair",
+      "largestGap": 0.053
     },
     {
       "mapSeed": 13,
-      "verdict": "skewed",
-      "largestDeviation": 3.407
+      "verdict": "fair",
+      "largestGap": 0.065
     },
     {
       "mapSeed": 14,
-      "verdict": "skewed",
-      "largestDeviation": 4.944
+      "verdict": "fair",
+      "largestGap": 0.067
     },
     {
       "mapSeed": 15,
-      "verdict": "skewed",
-      "largestDeviation": 3.105
+      "verdict": "uneven",
+      "largestGap": 0.075
     },
     {
       "mapSeed": 16,
-      "verdict": "skewed",
-      "largestDeviation": 3.06
+      "verdict": "fair",
+      "largestGap": 0.06
     },
     {
       "mapSeed": 17,
-      "verdict": "fair",
-      "largestDeviation": 1.625
+      "verdict": "uneven",
+      "largestGap": 0.083
     },
     {
       "mapSeed": 18,
-      "verdict": "skewed",
-      "largestDeviation": 3.717
+      "verdict": "uneven",
+      "largestGap": 0.081
     },
     {
       "mapSeed": 19,
-      "verdict": "uneven",
-      "largestDeviation": 2.325
+      "verdict": "fair",
+      "largestGap": 0.057
     },
     {
       "mapSeed": 20,
-      "verdict": "uneven",
-      "largestDeviation": 2.459
+      "verdict": "fair",
+      "largestGap": 0.063
     },
     {
       "mapSeed": 21,
       "verdict": "uneven",
-      "largestDeviation": 2.592
+      "largestGap": 0.107
     },
     {
       "mapSeed": 22,
-      "verdict": "uneven",
-      "largestDeviation": 2.575
+      "verdict": "fair",
+      "largestGap": 0.063
     },
     {
       "mapSeed": 23,
       "verdict": "fair",
-      "largestDeviation": 1.941
+      "largestGap": 0.068
     },
     {
       "mapSeed": 24,
       "verdict": "uneven",
-      "largestDeviation": 2.031
+      "largestGap": 0.107
     },
     {
       "mapSeed": 25,
       "verdict": "uneven",
-      "largestDeviation": 2.104
+      "largestGap": 0.113
     },
     {
       "mapSeed": 26,
-      "verdict": "skewed",
-      "largestDeviation": 4.058
+      "verdict": "fair",
+      "largestGap": 0.073
     },
     {
       "mapSeed": 27,
-      "verdict": "uneven",
-      "largestDeviation": 2.437
+      "verdict": "fair",
+      "largestGap": 0.065
     },
     {
       "mapSeed": 28,
       "verdict": "uneven",
-      "largestDeviation": 2.219
+      "largestGap": 0.094
     },
     {
       "mapSeed": 29,
       "verdict": "uneven",
-      "largestDeviation": 2.539
+      "largestGap": 0.12
     },
     {
       "mapSeed": 30,
-      "verdict": "skewed",
-      "largestDeviation": 3.082
+      "verdict": "fair",
+      "largestGap": 0.08
     },
     {
       "mapSeed": 31,
-      "verdict": "fair",
-      "largestDeviation": 1.65
+      "verdict": "uneven",
+      "largestGap": 0.08
     },
     {
       "mapSeed": 32,
       "verdict": "uneven",
-      "largestDeviation": 2.063
+      "largestGap": 0.087
     },
     {
       "mapSeed": 33,
       "verdict": "fair",
-      "largestDeviation": 1.712
+      "largestGap": 0.063
     },
     {
       "mapSeed": 34,
-      "verdict": "fair",
-      "largestDeviation": 1.18
+      "verdict": "uneven",
+      "largestGap": 0.083
     },
     {
       "mapSeed": 35,
       "verdict": "uneven",
-      "largestDeviation": 2.1
+      "largestGap": 0.111
     },
     {
       "mapSeed": 36,
       "verdict": "fair",
-      "largestDeviation": 1.95
+      "largestGap": 0.073
     },
     {
       "mapSeed": 37,
-      "verdict": "fair",
-      "largestDeviation": 1.225
+      "verdict": "uneven",
+      "largestGap": 0.1
     },
     {
       "mapSeed": 38,
       "verdict": "uneven",
-      "largestDeviation": 2.405
+      "largestGap": 0.146
     },
     {
       "mapSeed": 39,
       "verdict": "fair",
-      "largestDeviation": 1.8
+      "largestGap": 0.07
     },
     {
       "mapSeed": 40,
-      "verdict": "skewed",
-      "largestDeviation": 3.226
+      "verdict": "uneven",
+      "largestGap": 0.113
     },
     {
       "mapSeed": 41,
       "verdict": "uneven",
-      "largestDeviation": 2.548
+      "largestGap": 0.096
     },
     {
       "mapSeed": 42,
-      "verdict": "uneven",
-      "largestDeviation": 2.909
+      "verdict": "fair",
+      "largestGap": 0.053
     },
     {
       "mapSeed": 43,
       "verdict": "fair",
-      "largestDeviation": 1.712
+      "largestGap": 0.065
     },
     {
       "mapSeed": 44,
       "verdict": "uneven",
-      "largestDeviation": 2.935
+      "largestGap": 0.14
     },
     {
       "mapSeed": 45,
-      "verdict": "skewed",
-      "largestDeviation": 3.536
+      "verdict": "fair",
+      "largestGap": 0.08
     },
     {
       "mapSeed": 46,
       "verdict": "uneven",
-      "largestDeviation": 2.402
+      "largestGap": 0.127
     },
     {
       "mapSeed": 47,
       "verdict": "uneven",
-      "largestDeviation": 2.176
+      "largestGap": 0.107
     },
     {
       "mapSeed": 48,
-      "verdict": "skewed",
-      "largestDeviation": 3.04
+      "verdict": "uneven",
+      "largestGap": 0.107
     },
     {
       "mapSeed": 49,
-      "verdict": "skewed",
-      "largestDeviation": 3.1
+      "verdict": "uneven",
+      "largestGap": 0.083
     },
     {
       "mapSeed": 50,
-      "verdict": "skewed",
-      "largestDeviation": 3.176
+      "verdict": "uneven",
+      "largestGap": 0.094
     },
     {
       "mapSeed": 51,
       "verdict": "fair",
-      "largestDeviation": 1.411
+      "largestGap": 0.072
     },
     {
       "mapSeed": 52,
-      "verdict": "skewed",
-      "largestDeviation": 3.713
+      "verdict": "fair",
+      "largestGap": 0.074
     },
     {
       "mapSeed": 53,
-      "verdict": "fair",
-      "largestDeviation": 1.45
+      "verdict": "uneven",
+      "largestGap": 0.093
     },
     {
       "mapSeed": 54,
       "verdict": "uneven",
-      "largestDeviation": 2.54
+      "largestGap": 0.081
     },
     {
       "mapSeed": 55,
       "verdict": "uneven",
-      "largestDeviation": 2.043
+      "largestGap": 0.1
     },
     {
       "mapSeed": 56,
       "verdict": "uneven",
-      "largestDeviation": 2.734
+      "largestGap": 0.085
     },
     {
       "mapSeed": 57,
       "verdict": "fair",
-      "largestDeviation": 1.333
+      "largestGap": 0.08
     },
     {
       "mapSeed": 58,
-      "verdict": "uneven",
-      "largestDeviation": 2.023
+      "verdict": "fair",
+      "largestGap": 0.065
     },
     {
       "mapSeed": 59,
-      "verdict": "uneven",
-      "largestDeviation": 2.921
+      "verdict": "fair",
+      "largestGap": 0.078
     },
     {
       "mapSeed": 60,
-      "verdict": "fair",
-      "largestDeviation": 1.611
+      "verdict": "uneven",
+      "largestGap": 0.14
     }
   ]
 }
